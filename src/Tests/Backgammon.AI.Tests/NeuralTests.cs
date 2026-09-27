@@ -2,6 +2,7 @@ namespace Backgammon.AI.Tests
 {
     using System;
     using System.IO;
+    using System.Linq;
 
     using Backgammon.AI.Evaluation;
     using Backgammon.AI.Neural;
@@ -79,6 +80,23 @@ namespace Backgammon.AI.Tests
             for (var i = 1; i < count0; i++)
             {
                 Assert.True(indices0[i] > indices0[i - 1]);
+            }
+        }
+
+        [Fact]
+        public void TheShippedNetworksShouldBeTheOnesRecordedInNeuralNetworkMd()
+        {
+            var expected = new System.Collections.Generic.Dictionary<BackgammonVersion, string>
+            {
+                [BackgammonVersion.Obiknovena] = "bb7b6adeb7719185bec7fb95328244960ab3a38d793a1a7b9dcf3c126a4c50f5",
+            };
+
+            Assert.Equal(expected.Keys.OrderBy(v => v), Networks.Shipped.OrderBy(v => v));
+            foreach (var (version, hash) in expected)
+            {
+                using var stream = typeof(Networks).Assembly.GetManifestResourceStream(Networks.ResourceName(version))!;
+                Assert.Equal(hash, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(stream)));
+                Assert.Equal(version, Networks.For(version)!.Version);
             }
         }
 
