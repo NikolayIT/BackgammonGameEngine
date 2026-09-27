@@ -151,6 +151,9 @@ Each candidate against 1.0's network of its version, both with level 6's search:
 - **Capacity is not the limit.** Doubling the hidden layer gave the least, at twice the evaluation cost.
 - **Гюлбара did not improve.** It has no hitting, so of layout 2 only the blocking runs apply, and neither they nor
   inputs for the dice each side can still move by beat 1.0's network. It keeps that network.
+- **More inputs stopped paying.** Layout 2 plus the share of rolls on which each side's rearmost checker escapes past
+  every point held in front of it, and the share that enter from the bar (36 − k²), trained and refined the same way,
+  scored 47.8% ± 1.0% of 10,000 matches against the shipped обикновена network. It was dropped.
 - **Челеби is dominated by luck.** Escalating doubles move up to 84 pips in one roll, which caps how far any evaluator
   can pull ahead.
 - **The search was left as it is.** Having the mover play the rest of an opponent's broken chain in the one-roll
