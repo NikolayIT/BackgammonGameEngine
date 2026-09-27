@@ -1,0 +1,2 @@
+# BackgammonGameEngine
+Backgammon game engine
