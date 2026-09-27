@@ -20,7 +20,7 @@ namespace Backgammon.Logic.Tests.Support
         /// </summary>
         public static (Position Position, int Seat) Reachable(BackgammonVersion version, int seed, int index)
         {
-            var random = new Random(HashCode.Combine(seed, index, 17));
+            var random = new Random(Seed(seed, index, 17));
             var generator = new StageGenerator();
             var ends = new List<StageEnd>();
             while (true)
@@ -49,7 +49,7 @@ namespace Backgammon.Logic.Tests.Support
         /// </summary>
         public static (Position Position, int Seat) RandomValid(BackgammonVersion version, int seed, int index)
         {
-            var random = new Random(HashCode.Combine(seed, index, 29));
+            var random = new Random(Seed(seed, index, 29));
             var generator = new StageGenerator();
             var ends = new List<StageEnd>();
             while (true)
@@ -69,6 +69,18 @@ namespace Backgammon.Logic.Tests.Support
                     return (position, seat);
                 }
             }
+        }
+
+        /// <summary>
+        /// A seed made from three numbers, the same in every process. HashCode.Combine is not, because .NET seeds it
+        /// randomly per process.
+        /// </summary>
+        public static int Seed(int a, int b, int c)
+        {
+            var x = ((ulong)(uint)a * 0x9E3779B97F4A7C15UL) ^ ((ulong)(uint)b * 0xC2B2AE3D27D4EB4FUL) ^ ((ulong)(uint)c * 0x165667B19E3779F9UL);
+            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+            x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+            return (int)((x ^ (x >> 31)) & 0x7FFFFFFF);
         }
 
         /// <summary>Plays one random roll (doubles as four equal dice) and returns whether the game ended.</summary>

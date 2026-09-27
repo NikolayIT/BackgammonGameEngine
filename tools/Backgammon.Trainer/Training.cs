@@ -55,7 +55,7 @@ namespace Backgammon.Trainer
                 Parallel.For(0, settings.Batch, new ParallelOptions { MaxDegreeOfParallelism = settings.Threads }, slot =>
                 {
                     Array.Clear(buffers[slot]);
-                    var seed = HashCode.Combine(settings.Seed, batch, slot);
+                    var seed = Seed(settings.Seed, batch, slot);
                     var exploration = settings.Exploration * (1 - progress);
                     foreach (var game in new SelfPlay(evaluator).PlayMatch(settings.Version, seed, exploration))
                     {
@@ -110,6 +110,18 @@ namespace Backgammon.Trainer
 
             Save(network, settings, games, settings.Out);
             Console.WriteLine($"Done: {games} games in {clock.Elapsed.TotalMinutes:F1} min, best {best:P1} against the baseline.");
+        }
+
+        /// <summary>
+        /// A seed made from three numbers, the same in every process. HashCode.Combine is not, because .NET seeds it
+        /// randomly per process.
+        /// </summary>
+        public static int Seed(int a, int b, int c)
+        {
+            var x = ((ulong)(uint)a * 0x9E3779B97F4A7C15UL) ^ ((ulong)(uint)b * 0xC2B2AE3D27D4EB4FUL) ^ ((ulong)(uint)c * 0x165667B19E3779F9UL);
+            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+            x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+            return (int)((x ^ (x >> 31)) & 0x7FFFFFFF);
         }
 
         /// <summary>The network (with level 6's search) against the baseline in duplicate pairs of matches.</summary>

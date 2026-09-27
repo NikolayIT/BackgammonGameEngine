@@ -36,8 +36,13 @@ namespace Backgammon.AI
         public static BackgammonBotDecision Decide(BackgammonSeatView view, int level, Random random)
         {
             ArgumentNullException.ThrowIfNull(random);
-            var settings = BotLevels.SettingsFor(level);
+            if (level < 1 || level > Levels)
+            {
+                throw new ArgumentOutOfRangeException(nameof(level), level, $"A level is 1..{Levels}.");
+            }
+
             var situation = Situation.FromView(view);
+            var settings = BotLevels.SettingsFor(level, situation.Position.Version);
             var (ends, choice) = Chooser.Current.Choose(situation, BotLevels.EvaluatorFor(situation.Position.Version), settings, random);
             return new BackgammonBotDecision
             {

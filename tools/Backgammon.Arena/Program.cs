@@ -28,6 +28,10 @@ namespace Backgammon.Arena
                     Commands.Ladder(args);
                     return 0;
 
+                case "calibrate":
+                    Commands.Calibrate(args);
+                    return 0;
+
                 case "timing":
                     Commands.Timing(args);
                     return 0;
@@ -37,6 +41,7 @@ namespace Backgammon.Arena
                     Console.WriteLine("  vectors [folder]");
                     Console.WriteLine("  arena <variant|all> <A> <B> [pairs] [threads]      players: L1..L6, random, baseline, baseline0");
                     Console.WriteLine("  ladder <variant|all> [pairs] [players...]");
+                    Console.WriteLine("  calibrate <variant|all> [pairs]");
                     Console.WriteLine("  timing <variant|all> [matches] [player]");
                     return command == "help" ? 0 : 1;
             }

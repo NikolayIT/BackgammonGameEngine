@@ -15,8 +15,14 @@ namespace Backgammon.AI
     /// </summary>
     internal static class BotLevels
     {
-        // Noise per level 1..6, in match-winning chance.
-        private static readonly double[] Noise = { 0.30, 0.16, 0.09, 0.05, 0.02, 0 };
+        // Noise per version and level 1..6, in match-winning chance, from the arena's calibrate command.
+        private static readonly double[][] Noise =
+        {
+            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
+            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
+            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
+            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
+        };
 
         private static readonly Lazy<IEvaluator>[] Evaluators =
         {
@@ -29,14 +35,14 @@ namespace Backgammon.AI
         /// <summary>The strongest evaluator of a version: its shipped network, or the hand-written baseline.</summary>
         public static IEvaluator EvaluatorFor(BackgammonVersion version) => Evaluators[(int)version].Value;
 
-        public static SearchSettings SettingsFor(int level)
+        public static SearchSettings SettingsFor(int level, BackgammonVersion version)
         {
             if (level < 1 || level > BackgammonBot.Levels)
             {
                 throw new ArgumentOutOfRangeException(nameof(level), level, $"A level is 1..{BackgammonBot.Levels}.");
             }
 
-            return new SearchSettings(Noise[level - 1], LookAhead: level == BackgammonBot.Levels ? 3 : 0, EvaluationBudget: 4_000);
+            return new SearchSettings(Noise[(int)version][level - 1], LookAhead: level == BackgammonBot.Levels ? 3 : 0, EvaluationBudget: 4_000);
         }
 
         private static IEvaluator Create(BackgammonVersion version) =>

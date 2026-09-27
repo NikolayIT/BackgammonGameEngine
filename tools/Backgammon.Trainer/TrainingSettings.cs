@@ -22,14 +22,14 @@ namespace Backgammon.Trainer
         public int Hidden { get; set; } = 128;
 
         /// <summary>Gets or sets the step size per state at the start; it falls geometrically to <see cref="AlphaEnd"/>.</summary>
-        public double Alpha { get; set; } = 0.02;
+        public double Alpha { get; set; } = 0.001;
 
-        public double AlphaEnd { get; set; } = 0.002;
+        public double AlphaEnd { get; set; } = 0.0001;
 
         public double Lambda { get; set; } = 0.7;
 
         /// <summary>Gets or sets how many games are played with the same frozen network before their changes are applied.</summary>
-        public int Batch { get; set; } = 32;
+        public int Batch { get; set; } = 20;
 
         /// <summary>Gets or sets the share of random plays at the start (none by default: the dice explore).</summary>
         public double Exploration { get; set; }
