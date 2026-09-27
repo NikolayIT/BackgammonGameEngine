@@ -68,21 +68,30 @@ namespace Backgammon.Trainer
                     Outcome chosen;
                     if (high != low || !escalates)
                     {
-                        chosen = Best(evaluator, generator, ends, state.Position, roller, high == low ? StageDice.Same(high, 4) : StageDice.Distinct(high, low), after, out _, out _);
+                        chosen = Best(evaluator, generator, ends, state.Position, roller, high == low ? StageDice.Same(high, 4) : StageDice.Distinct(high, low), after, out _, out _, out _, out _);
                     }
                     else
                     {
-                        // An escalating double, stage by stage; a chain that breaks is valued where it stops.
+                        // An escalating double, stage by stage. When the chain breaks after the roller has played
+                        // some of it, the opponent plays the rest before it rolls; a chain the roller could not start
+                        // is lost.
                         var current = state.Position;
+                        var played = 0;
                         chosen = default;
                         for (var die = high; die <= 6; die++)
                         {
-                            chosen = Best(evaluator, generator, ends, current, roller, StageDice.Same(die, 4), after, out var next, out var complete);
+                            chosen = Best(evaluator, generator, ends, current, roller, StageDice.Same(die, 4), after, out var next, out var complete, out var stagePlayed, out var ended);
                             if (!complete)
                             {
+                                if (!ended && played + stagePlayed > 0)
+                                {
+                                    chosen = Remainder(evaluator, generator, ends, next, 1 - roller, die, 4 - stagePlayed, after);
+                                }
+
                                 break;
                             }
 
+                            played += 4;
                             current = next;
                         }
                     }
@@ -98,22 +107,34 @@ namespace Backgammon.Trainer
             target[2] = (float)loseDouble;
         }
 
-        private static Outcome Best(NeuralEvaluator evaluator, StageGenerator generator, List<StageEnd> ends, in Position position, int roller, StageDice dice, RollCounts after, out Position chosen, out bool complete)
+        /// <summary>
+        /// The mover's best play of a stage by expected points, valued with <paramref name="onRollAfter"/> to roll next;
+        /// the outcome is for the mover.
+        /// </summary>
+        private static Outcome Best(NeuralEvaluator evaluator, StageGenerator generator, List<StageEnd> ends, in Position position, int mover, int onRollAfter, StageDice dice, RollCounts after, out Position chosen, out int playable, out bool ended)
         {
-            var playable = generator.Generate(position, roller, dice, ends);
+            playable = generator.Generate(position, mover, dice, ends);
             var best = 0;
             var bestPoints = double.NegativeInfinity;
             Outcome bestOutcome = default;
             for (var i = 0; i < ends.Count; i++)
             {
                 var end = ends[i];
-                var outcome = end.End switch
+                Outcome outcome;
+                if (end.End != GameEnd.None)
                 {
-                    GameEnd.BorneOff => Outcome.Won(end.Position.Count(1 - roller, Geometry.Off) == 0),
-                    GameEnd.Mother => Outcome.Won(doubled: true),
-                    GameEnd.BothMothers => Outcome.Drawn,
-                    _ => evaluator.Evaluate(end.Position, 1 - roller, after).Flip(),
-                };
+                    outcome = end.End switch
+                    {
+                        GameEnd.BorneOff => Outcome.Won(end.Position.Count(1 - mover, Geometry.Off) == 0),
+                        GameEnd.Mother => Outcome.Won(doubled: true),
+                        _ => Outcome.Drawn,
+                    };
+                }
+                else
+                {
+                    var value = evaluator.Evaluate(end.Position, onRollAfter, after);
+                    outcome = onRollAfter == mover ? value : value.Flip();
+                }
 
                 var points = outcome.Points();
                 if (points > bestPoints)
@@ -125,8 +146,37 @@ namespace Backgammon.Trainer
             }
 
             chosen = ends[best].Position;
-            complete = playable == dice.Count && ends[best].End == GameEnd.None;
+            ended = ends[best].End != GameEnd.None;
             return bestOutcome;
+        }
+
+        private static Outcome Best(NeuralEvaluator evaluator, StageGenerator generator, List<StageEnd> ends, in Position position, int roller, StageDice dice, RollCounts after, out Position chosen, out bool complete, out int playable, out bool ended)
+        {
+            var outcome = Best(evaluator, generator, ends, position, roller, 1 - roller, dice, after, out chosen, out playable, out ended);
+            complete = playable == dice.Count && !ended;
+            return outcome;
+        }
+
+        /// <summary>
+        /// The opponent plays the rest of the roller's chain, stage by stage and greedily for itself, then rolls:
+        /// <paramref name="left"/> dice of <paramref name="die"/>, then four of each higher die. Returns the roller's outcome.
+        /// </summary>
+        private static Outcome Remainder(NeuralEvaluator evaluator, StageGenerator generator, List<StageEnd> ends, in Position position, int opponent, int die, int left, RollCounts after)
+        {
+            var current = position;
+            for (var stage = die; stage <= 6; stage++)
+            {
+                var dice = StageDice.Same(stage, stage == die ? left : 4);
+                var outcome = Best(evaluator, generator, ends, current, opponent, opponent, dice, after, out var next, out _, out var ended);
+                if (ended)
+                {
+                    return outcome.Flip();
+                }
+
+                current = next;
+            }
+
+            return evaluator.Evaluate(current, opponent, after).Flip();
         }
 
         private static TrainingState[] Collect(NeuralNetwork network, TrainingSettings settings, long count, int seedBase)
