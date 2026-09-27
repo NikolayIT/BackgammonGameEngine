@@ -115,7 +115,7 @@ namespace Backgammon.Logic.Tests.Support
                 for (var seat = 0; seat < 2 && ok; seat++)
                 {
                     var off = random.Next(3) == 0 ? random.Next(0, 15) : 0;
-                    var bar = Geometry.HasBar(version) && random.Next(4) == 0 ? random.Next(1, 4) : 0;
+                    var bar = Geometry.HasBar(version) && random.Next(4) == 0 ? random.Next(1, Math.Min(3, 15 - off) + 1) : 0;
                     position.Set(seat, Geometry.Off, off);
                     position.Set(seat, Geometry.Bar, bar);
                     var left = 15 - off - bar;

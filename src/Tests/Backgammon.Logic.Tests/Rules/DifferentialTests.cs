@@ -36,6 +36,19 @@ namespace Backgammon.Logic.Tests.Rules
             Compare(version, TestScale.Pick(400, 40_000), index => PositionSources.RandomValid(version, 2, index));
         }
 
+        [Theory]
+        [MemberData(nameof(Versions))]
+        public void ThePositionsToCompareOnShouldBeValid(BackgammonVersion version)
+        {
+            // Reading a position back through a view board checks it: 15 checkers a seat, pins and the bar allowed.
+            for (var index = 0; index < 3_000; index++)
+            {
+                var (position, _) = index % 10 == 0 ? PositionSources.Reachable(version, 1, index) : PositionSources.RandomValid(version, 2, index);
+
+                Assert.Equal(position, ViewConverter.ToPosition(version, ViewConverter.ToBoard(position)));
+            }
+        }
+
         internal static string? Difference(StageGenerator generator, List<StageEnd> ends, in Position position, int seat, StageDice dice)
         {
             var max = generator.Generate(position, seat, dice, ends);
