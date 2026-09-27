@@ -13,6 +13,7 @@ namespace Backgammon.Arena
         {
             System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
             System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            Backgammon.Trainer.NativeMethods.DisablePowerThrottling();
             var command = args.Length > 0 ? args[0] : "help";
             switch (command)
             {
