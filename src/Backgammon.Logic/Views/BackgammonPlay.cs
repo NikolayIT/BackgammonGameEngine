@@ -32,7 +32,8 @@ namespace Backgammon.Logic
 
         /// <summary>
         /// Gets the stage's position in its chain, counting from 0: 0 for the rolled dice themselves, then 1, 2, … for the
-        /// later stages of an escalating chain or of a remainder.
+        /// later stages of an escalating chain. A remainder counts its own stages from 0 too, so a stage 0 is a roll only
+        /// when it is not <see cref="IsRemainder"/>.
         /// </summary>
         public int Stage { get; init; }
 
