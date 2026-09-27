@@ -11,6 +11,8 @@ namespace Backgammon.Arena
     {
         public static int Main(string[] args)
         {
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
             var command = args.Length > 0 ? args[0] : "help";
             switch (command)
             {
@@ -18,8 +20,24 @@ namespace Backgammon.Arena
                     VectorWriter.WriteAll(args.Length > 1 ? args[1] : FindVectorFolder());
                     return 0;
 
+                case "arena":
+                    Commands.Arena(args);
+                    return 0;
+
+                case "ladder":
+                    Commands.Ladder(args);
+                    return 0;
+
+                case "timing":
+                    Commands.Timing(args);
+                    return 0;
+
                 default:
-                    Console.WriteLine("Commands: vectors [folder]");
+                    Console.WriteLine("Commands:");
+                    Console.WriteLine("  vectors [folder]");
+                    Console.WriteLine("  arena <variant|all> <A> <B> [pairs] [threads]      players: L1..L6, random, baseline, baseline0");
+                    Console.WriteLine("  ladder <variant|all> [pairs] [players...]");
+                    Console.WriteLine("  timing <variant|all> [matches] [player]");
                     return command == "help" ? 0 : 1;
             }
         }
