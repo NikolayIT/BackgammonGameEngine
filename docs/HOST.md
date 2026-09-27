@@ -48,8 +48,9 @@ way ednaigra.com hosts SantaseGameEngine (`src/Games/EdnaIgra.Games.Santase`).
 - **`CreateFinalView`**: call `Stop()` if the match is not finished, then map `match.GetFinalView()`, whose `Record`
   holds every game.
 - **`CreateTimeoutAction`**: null (a timeout loses the match), as for Santase.
-- **Actions** are one stage each: `{ steps: [[from, die], …] }` in the mover's own numbering, at most 4 steps, which
-  is far below the 4 KB message limit.
+- **Actions** are one stage each, in the mover's own numbering, with at most 4 steps, far below the 4 KB message
+  limit. A `BackgammonAction` serializes as `{"steps":[{"from":13,"die":6},{"from":7,"die":1}]}`. (The test vectors
+  write steps as `[from, die]` pairs, which is not the action's own JSON.)
 - **`AutoPlayForcedStages`** saves a person the clicks when every legal play gives the same position.
 
 ## Fairness
