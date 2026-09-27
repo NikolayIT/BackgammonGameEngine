@@ -100,11 +100,18 @@ namespace Backgammon.Logic
         };
 
         /// <summary>Starts the match: the first game's opening roll is drawn and played up to the first decision.</summary>
+        /// <exception cref="InvalidOperationException">The match has already started, or was stopped before it started.</exception>
         public void Start()
         {
             if (this.IsStarted)
             {
                 throw new InvalidOperationException("The match has already started.");
+            }
+
+            if (this.IsStopped)
+            {
+                // A match stopped before its start is over; it draws no dice.
+                throw new InvalidOperationException("The match was stopped before it started.");
             }
 
             this.IsStarted = true;
@@ -142,7 +149,8 @@ namespace Backgammon.Logic
 
         /// <summary>
         /// Ends the match now, for a resignation, a timeout or an abandoned table: it is finished, stopped and has no
-        /// winner (the host decides the outcome). Does nothing to a match that is already over.
+        /// winner (the host decides the outcome). Does nothing to a match that is already over. A match stopped before
+        /// its start can no longer be started.
         /// </summary>
         public void Stop()
         {
@@ -225,14 +233,15 @@ namespace Backgammon.Logic
         {
             end = default;
             gameEnd = GameEnd.None;
+            if (this.IsFinished)
+            {
+                // Also a match stopped before its start.
+                return BackgammonActResult.MatchFinished;
+            }
+
             if (!this.IsStarted)
             {
                 throw new InvalidOperationException("The match has not started.");
-            }
-
-            if (this.IsFinished)
-            {
-                return BackgammonActResult.MatchFinished;
             }
 
             if (seat != this.ToMove)

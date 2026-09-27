@@ -143,6 +143,26 @@ namespace Backgammon.Logic.Tests.Match
         }
 
         [Fact]
+        public void AMatchStoppedBeforeItsStartShouldDrawNoDiceAndStayOver()
+        {
+            var dice = LoggedDice.Seeded(3);
+            var match = new BackgammonMatch(new BackgammonMatchOptions { Dice = dice.Source });
+
+            match.Stop();
+
+            Assert.Throws<InvalidOperationException>(match.Start);
+            Assert.Empty(dice.Log);
+            Assert.True(match.IsFinished);
+            Assert.True(match.IsStopped);
+            Assert.Equal(-1, match.ToMove);
+            Assert.Equal(0, match.GameNumber);
+            Assert.Equal(BackgammonActResult.MatchFinished, match.Validate(0, new BackgammonAction()));
+            Assert.Equal(BackgammonActResult.MatchFinished, match.Act(0, new BackgammonAction()));
+            Assert.Empty(match.GetRecord().Games);
+            Assert.Empty(dice.Log);
+        }
+
+        [Fact]
         public void StoppingAFinishedMatchShouldChangeNothing()
         {
             var match = new BackgammonMatch(new BackgammonMatchOptions { Dice = LoggedDice.Seeded(4).Source });
