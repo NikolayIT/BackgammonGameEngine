@@ -124,10 +124,13 @@ namespace Backgammon.Trainer
             return (int)((x ^ (x >> 31)) & 0x7FFFFFFF);
         }
 
-        /// <summary>The network (with level 6's search) against the baseline in duplicate pairs of matches.</summary>
+        /// <summary>
+        /// The network against the baseline in duplicate pairs of matches, both with level 6's search (the look-ahead
+        /// through known stages and one roll deeper at the two best plays).
+        /// </summary>
         public static (double WinRate, double Error) Measure(NeuralNetwork network, TrainingSettings settings, int pairs)
         {
-            var search = new SearchSettings(0, 3, 4_000);
+            var search = new SearchSettings(0, 3, 4_000, 2);
             var candidate = new EvaluatorPlayer("net", _ => new NeuralEvaluator(network), search);
             var baseline = new EvaluatorPlayer("baseline", _ => BaselineEvaluator.Instance, search);
             var stats = ArenaRunner.PlayPairs((BackgammonVariant)(int)settings.Version, candidate, baseline, pairs, settings.Threads, seedBase: 1_000_000);

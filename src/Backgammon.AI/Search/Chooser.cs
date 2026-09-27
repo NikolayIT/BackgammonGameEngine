@@ -98,6 +98,33 @@ namespace Backgammon.AI.Search
                 }
             }
 
+            // Optionally, the few best plays that hand the turn over are looked at one roll deeper.
+            var opponent = 1 - situation.Mover;
+            if (settings.OneRoll > 0 && next.Kind == ContinuationKind.OpponentRolls && !situation.Rolls.NextEscalates(situation.Position, opponent))
+            {
+                this.order.Sort(this.ByScoreDescending);
+                var deep = Math.Min(settings.OneRoll, this.order.Count);
+                var best = double.NegativeInfinity;
+                for (var rank = 0; rank < deep && this.evaluations < settings.EvaluationBudget; rank++)
+                {
+                    var index = this.order[rank];
+                    if (ends[index].End == GameEnd.None)
+                    {
+                        this.scores[index] = this.OneRoll(ends[index].Position);
+                        best = Math.Max(best, this.scores[index]);
+                    }
+                }
+
+                for (var rank = deep; rank < this.order.Count && !double.IsNegativeInfinity(best); rank++)
+                {
+                    var index = this.order[rank];
+                    if (ends[index].End == GameEnd.None)
+                    {
+                        this.scores[index] = Math.Min(this.scores[index], best - 1e-9);
+                    }
+                }
+            }
+
             var choice = 0;
             var top = double.NegativeInfinity;
             for (var i = 0; i < ends.Count; i++)
@@ -237,6 +264,36 @@ namespace Backgammon.AI.Search
             }
 
             return this.Quiet(position, opponent);
+        }
+
+        /// <summary>
+        /// The mover's match-winning chance after the opponent rolls from <paramref name="position"/>: for each of the 21
+        /// rolls the opponent's best play (by the same evaluator), weighted by the roll's chance.
+        /// </summary>
+        private double OneRoll(in Position position)
+        {
+            var mover = this.situation.Mover;
+            var opponent = 1 - mover;
+            var ends = this.lists[1];
+            var total = 0.0;
+            for (var high = 1; high <= 6; high++)
+            {
+                for (var low = 1; low <= high; low++)
+                {
+                    var dice = high == low ? StageDice.Same(high, 4) : StageDice.Distinct(high, low);
+                    this.generator.Generate(position, opponent, dice, ends);
+                    var worst = double.PositiveInfinity;
+                    for (var i = 0; i < ends.Count; i++)
+                    {
+                        var value = ends[i].End != GameEnd.None ? this.Terminal(ends[i].Position, ends[i].End, opponent) : this.Quiet(ends[i].Position, mover);
+                        worst = Math.Min(worst, value);
+                    }
+
+                    total += (high == low ? 1.0 : 2.0) / 36 * worst;
+                }
+            }
+
+            return total;
         }
 
         /// <summary>The mover's match-winning chance in a quiet position with <paramref name="onRoll"/> to roll.</summary>

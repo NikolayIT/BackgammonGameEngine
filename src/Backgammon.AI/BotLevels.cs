@@ -9,8 +9,8 @@ namespace Backgammon.AI
 
     /// <summary>
     /// What each level plays with. Level 6 is the strongest evaluator of the version, searching ahead through known
-    /// stages. Levels 1..5 use the same evaluator with Gaussian noise on each play's match-winning chance, as GNU
-    /// Backgammon does. The noise is calibrated in the arena (ARENA.md) so that each level is an even rating step above
+    /// stages and one roll deeper at its best plays. Levels 1..5 use the same evaluator without the search, and with
+    /// Gaussian noise on each play's match-winning chance, as GNU Backgammon does. The noise is calibrated in the arena (ARENA.md) so that each level is an even rating step above
     /// the one below.
     /// </summary>
     internal static class BotLevels
@@ -42,7 +42,10 @@ namespace Backgammon.AI
                 throw new ArgumentOutOfRangeException(nameof(level), level, $"A level is 1..{BackgammonBot.Levels}.");
             }
 
-            return new SearchSettings(Noise[(int)version][level - 1], LookAhead: level == BackgammonBot.Levels ? 3 : 0, EvaluationBudget: 4_000);
+            // Level 6 plays on through the known stages of a chain and looks one roll deeper at its two best plays.
+            return level == BackgammonBot.Levels
+                ? new SearchSettings(0, LookAhead: 3, EvaluationBudget: 4_000, OneRoll: 2)
+                : new SearchSettings(Noise[(int)version][level - 1], LookAhead: 0, EvaluationBudget: 0);
         }
 
         private static IEvaluator Create(BackgammonVersion version) =>

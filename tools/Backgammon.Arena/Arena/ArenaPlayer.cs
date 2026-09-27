@@ -22,19 +22,21 @@ namespace Backgammon.Arena
         /// <list type="bullet">
         /// <item><c>L1</c>..<c>L6</c>: the shipped levels.</item>
         /// <item><c>random</c>: a uniformly random legal play.</item>
-        /// <item><c>baseline</c>: the hand-written evaluator with level 6's search.</item>
+        /// <item><c>baseline</c>: the hand-written evaluator with level 6's search (look-ahead and one roll).</item>
         /// <item><c>baseline0</c>: the same without the look-ahead.</item>
         /// <item><c>net:&lt;file&gt;</c>: a network from a file, with level 6's search.</item>
+        /// <item><c>net1:&lt;file&gt;</c>: the same, looking one roll deeper at its two best plays.</item>
         /// <item><c>noise:&lt;σ&gt;</c>: the strongest evaluator with that much noise and no look-ahead.</item>
         /// </list>
         /// </summary>
         public static ArenaPlayer Parse(string name) => name switch
         {
             "random" => new RandomPlayer(),
-            "baseline" => new EvaluatorPlayer(name, _ => BaselineEvaluator.Instance, new SearchSettings(0, 3, 4_000)),
+            "baseline" => new EvaluatorPlayer(name, _ => BaselineEvaluator.Instance, new SearchSettings(0, 3, 4_000, 2)),
             "baseline0" => new EvaluatorPlayer(name, _ => BaselineEvaluator.Instance, new SearchSettings(0, 0, 0)),
             _ when name.Length == 2 && name[0] == 'L' && char.IsDigit(name[1]) => new LevelPlayer(name[1] - '0'),
-            _ when name.StartsWith("net:", StringComparison.Ordinal) => NetworkPlayer(name, name[4..]),
+            _ when name.StartsWith("net:", StringComparison.Ordinal) => NetworkPlayer(name, name[4..], 0),
+            _ when name.StartsWith("net1:", StringComparison.Ordinal) => NetworkPlayer(name, name[5..], 2),
             _ when name.StartsWith("noise:", StringComparison.Ordinal) => Noisy(double.Parse(name[6..], System.Globalization.CultureInfo.InvariantCulture)),
             _ => throw new ArgumentException($"Unknown player '{name}'."),
         };
@@ -45,11 +47,11 @@ namespace Backgammon.Arena
 
         public abstract BackgammonAction Choose(BackgammonSeatView view, Random random);
 
-        private static ArenaPlayer NetworkPlayer(string name, string path)
+        private static ArenaPlayer NetworkPlayer(string name, string path, int oneRoll)
         {
             using var stream = System.IO.File.OpenRead(path);
             var evaluator = new Backgammon.AI.Neural.NeuralEvaluator(Backgammon.AI.Neural.NeuralNetwork.Read(stream));
-            return new EvaluatorPlayer(name, _ => evaluator, new SearchSettings(0, 3, 4_000));
+            return new EvaluatorPlayer(name, _ => evaluator, new SearchSettings(0, 3, 4_000, oneRoll));
         }
 
         private sealed class LevelPlayer : ArenaPlayer
