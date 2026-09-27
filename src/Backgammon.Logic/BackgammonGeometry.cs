@@ -25,7 +25,7 @@ namespace Backgammon.Logic
         /// <returns>The same point in seat 0's numbering.</returns>
         public static int ToSeat0(BackgammonVersion version, int seat, int point)
         {
-            Check(seat, point);
+            Check(version, seat, point);
             return Geometry.ToSeat0(version, seat, point);
         }
 
@@ -36,17 +36,30 @@ namespace Backgammon.Logic
         /// <returns>The same point in <paramref name="seat"/>'s numbering.</returns>
         public static int FromSeat0(BackgammonVersion version, int seat, int seat0Point)
         {
-            Check(seat, seat0Point);
+            Check(version, seat, seat0Point);
             return Geometry.FromSeat0(version, seat, seat0Point);
         }
 
         /// <summary>Gets the board a game of <paramref name="version"/> starts from.</summary>
         /// <param name="version">The rules of the game.</param>
         /// <returns>The starting board, in seat 0's numbering.</returns>
-        public static BackgammonBoard StartBoard(BackgammonVersion version) => ViewConverter.ToBoard(Position.Start(version));
-
-        private static void Check(int seat, int point)
+        public static BackgammonBoard StartBoard(BackgammonVersion version)
         {
+            Check(version);
+            return ViewConverter.ToBoard(Position.Start(version));
+        }
+
+        private static void Check(BackgammonVersion version)
+        {
+            if (!Enum.IsDefined(version))
+            {
+                throw new ArgumentOutOfRangeException(nameof(version), version, "Unknown version.");
+            }
+        }
+
+        private static void Check(BackgammonVersion version, int seat, int point)
+        {
+            Check(version);
             if (seat != 0 && seat != 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(seat), seat, "A seat is 0 or 1.");

@@ -117,6 +117,19 @@ namespace Backgammon.Logic.Tests.Match
         }
 
         [Fact]
+        public void AViewOrPointOfAnUnknownVersionShouldBeRefused()
+        {
+            // An unknown version used to give moves by made-up rules: hits like обикновена, but no bar to enter from.
+            var unknown = (BackgammonVersion)9;
+            var view = new BackgammonSeatView { Version = unknown, ToMove = 0, Board = BackgammonGeometry.StartBoard(BackgammonVersion.Obiknovena), StageDice = new[] { 6, 1 } };
+
+            Assert.Throws<ArgumentException>(() => BackgammonStageMoves.For(view));
+            Assert.Throws<ArgumentOutOfRangeException>(() => BackgammonGeometry.StartBoard(unknown));
+            Assert.Throws<ArgumentOutOfRangeException>(() => BackgammonGeometry.ToSeat0(unknown, 1, 5));
+            Assert.Throws<ArgumentOutOfRangeException>(() => BackgammonGeometry.FromSeat0(unknown, 1, 5));
+        }
+
+        [Fact]
         public void TheSeatOneHelpersShouldNumberBothWays()
         {
             // Seat 1 wins the opening with 5-2 (seat 0's die first).

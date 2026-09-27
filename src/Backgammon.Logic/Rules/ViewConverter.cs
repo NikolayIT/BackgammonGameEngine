@@ -35,6 +35,11 @@ namespace Backgammon.Logic.Rules
         public static Position ToPosition(BackgammonVersion version, BackgammonBoard board)
         {
             ArgumentNullException.ThrowIfNull(board);
+            if (!Enum.IsDefined(version))
+            {
+                throw new ArgumentException($"Unknown version {(int)version}.", nameof(version));
+            }
+
             if (board.Points is not { Count: 24 } || board.Bar is not { Count: 2 } || board.Off is not { Count: 2 })
             {
                 throw new ArgumentException("A board has 24 points and a bar and an off count for each seat.", nameof(board));

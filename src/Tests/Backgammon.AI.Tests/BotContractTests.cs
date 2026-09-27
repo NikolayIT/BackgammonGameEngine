@@ -102,6 +102,10 @@ namespace Backgammon.AI.Tests
             Assert.Throws<ArgumentOutOfRangeException>(() => BackgammonBot.Choose(view, 7, new Random(1)));
             match.Stop();
             Assert.Throws<ArgumentException>(() => BackgammonBot.Choose(match.GetView(0), 6, new Random(1)));
+
+            // A view of an unknown version used to fail with IndexOutOfRangeException.
+            var unknown = new BackgammonSeatView { Version = (BackgammonVersion)9, ToMove = 0, Board = view.Board, StageDice = view.StageDice };
+            Assert.Throws<ArgumentException>(() => BackgammonBot.Choose(unknown, 6, new Random(1)));
         }
 
         [Theory]
