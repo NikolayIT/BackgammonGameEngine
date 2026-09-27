@@ -118,6 +118,31 @@ namespace Backgammon.Logic.Tests.Match
         }
 
         [Fact]
+        public void AMatchStoppedMidTurnShouldStillAccountForEveryDie()
+        {
+            for (var seed = 0; seed < 40; seed++)
+            {
+                var dice = LoggedDice.Seeded(seed);
+                var match = new BackgammonMatch(new BackgammonMatchOptions { Variant = (BackgammonVariant)(seed % 5), Dice = dice.Source });
+                match.Start();
+                var random = new Random(seed);
+                for (var action = 0; action < 5 + seed && !match.IsFinished; action++)
+                {
+                    match.Act(match.ToMove, MatchDriver.RandomAction(match, random));
+                }
+
+                match.Stop();
+
+                var record = match.GetRecord();
+                Assert.Equal(dice.Log.Select(d => (d.Purpose, d.Die)), LoggedDice.DrawsOf(record));
+                if (!record.Games[^1].Plays.Any(p => p.Stage == 0 && !p.IsRemainder && p.Roll.SequenceEqual(new[] { dice.Log[^2].Die, dice.Log[^1].Die })))
+                {
+                    Assert.NotEmpty(record.Games[^1].PendingRoll);
+                }
+            }
+        }
+
+        [Fact]
         public void StoppingAFinishedMatchShouldChangeNothing()
         {
             var match = new BackgammonMatch(new BackgammonMatchOptions { Dice = LoggedDice.Seeded(4).Source });
