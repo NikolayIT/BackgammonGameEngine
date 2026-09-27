@@ -187,6 +187,9 @@ namespace Backgammon.Logic.Tests.Match
             Assert.Null(match.GetView(0).LastGame);
             Assert.NotEmpty(match.GetView(0).Results);
             Assert.Throws<InvalidOperationException>(() => match.GetRecord());
+
+            // A record with no games would account for none of the dice drawn, so the final view has none.
+            Assert.Null(match.GetFinalView().Record);
         }
 
         private static BackgammonAction RandomSteps(Random random)

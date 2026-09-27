@@ -93,11 +93,23 @@ namespace Backgammon.Logic
         /// <param name="variant">What the match is played as.</param>
         /// <param name="gameNumber">The game's number, counting from 1.</param>
         /// <returns>The version: the variant's own, or the среща rotation обикновена, гюлбара, тапа.</returns>
-        public static BackgammonVersion VersionOf(BackgammonVariant variant, int gameNumber) => variant switch
+        /// <exception cref="ArgumentOutOfRangeException">The variant is unknown, or the game number is below 1.</exception>
+        public static BackgammonVersion VersionOf(BackgammonVariant variant, int gameNumber)
         {
-            BackgammonVariant.Sreshta => (BackgammonVersion)((gameNumber - 1) % 3),
-            _ => (BackgammonVersion)(int)variant,
-        };
+            if (!Enum.IsDefined(variant))
+            {
+                throw new ArgumentOutOfRangeException(nameof(variant), variant, "Unknown variant.");
+            }
+
+            if (gameNumber < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(gameNumber), gameNumber, "Games are numbered from 1.");
+            }
+
+            return variant == BackgammonVariant.Sreshta
+                ? (BackgammonVersion)((gameNumber - 1) % 3)
+                : (BackgammonVersion)(int)variant;
+        }
 
         /// <summary>Starts the match: the first game's opening roll is drawn and played up to the first decision.</summary>
         /// <exception cref="InvalidOperationException">The match has already started, or was stopped before it started.</exception>
@@ -177,9 +189,12 @@ namespace Backgammon.Logic
             return this.BuildView(seat, record: null);
         }
 
-        /// <summary>Gets the final view: no seat, and the full <see cref="BackgammonSeatView.Record"/> of the match.</summary>
+        /// <summary>
+        /// Gets the final view: no seat, and the full <see cref="BackgammonSeatView.Record"/> of the match (null when the
+        /// match does not record its history).
+        /// </summary>
         /// <returns>The view with the record.</returns>
-        public BackgammonSeatView GetFinalView() => this.BuildView(-1, this.BuildRecord());
+        public BackgammonSeatView GetFinalView() => this.BuildView(-1, this.history ? this.BuildRecord() : null);
 
         /// <summary>Gets the full record of the match: every game's openings, rolls and steps.</summary>
         /// <returns>The record.</returns>

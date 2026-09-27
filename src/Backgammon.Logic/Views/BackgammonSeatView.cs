@@ -113,7 +113,10 @@ namespace Backgammon.Logic
         /// <summary>Gets the result of every finished game, in order.</summary>
         public IReadOnlyList<BackgammonGameResult> Results { get; init; } = Array.Empty<BackgammonGameResult>();
 
-        /// <summary>Gets the full record of the match; only in the final view (<see cref="BackgammonMatch.GetFinalView"/>).</summary>
+        /// <summary>
+        /// Gets the full record of the match; only in the final view (<see cref="BackgammonMatch.GetFinalView"/>) of a
+        /// match that records its history.
+        /// </summary>
         public BackgammonMatchRecord? Record { get; init; }
     }
 }
