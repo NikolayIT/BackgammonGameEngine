@@ -64,36 +64,78 @@ namespace Backgammon.Arena
         }
 
         /// <summary>
-        /// <c>calibrate &lt;variant|all&gt; [pairs]</c>: finds the noise of each level of a version. Level 1 gets the
-        /// largest noise that still beats a random player in 75% of matches; levels 2..5 get the noise that puts them
-        /// at even rating steps between level 1 and level 6 (as measured against level 6). Paste the result into
-        /// BotLevels.
+        /// <c>calibrate &lt;variant|all&gt; [pairs]</c>: finds the noise of each level of a version.
+        /// <list type="number">
+        /// <item>A chain of players runs from random play, through the strongest evaluator with less and less noise
+        /// (0-ply), up to level 6. Each player meets its two nearest neighbours in duplicate pairs, where win rates stay
+        /// measurable (level 6 wins every match against the weakest players).</item>
+        /// <item>A Bradley-Terry fit over the whole chain gives each player a rating.</item>
+        /// <item>Level 1 gets the noise rated 191 Elo above random play, which means winning 75% of matches against
+        /// it. Levels 2..5 get the noise at even rating steps between level 1 and level 6, interpolated in the
+        /// logarithm of the noise.</item>
+        /// </list>
+        /// Paste the result into BotLevels.
         /// </summary>
         public static void Calibrate(string[] args)
         {
             var pairs = args.Length > 2 ? int.Parse(args[2], CultureInfo.InvariantCulture) : 300;
-            var strong = ArenaPlayer.Parse("L6");
-            var random = ArenaPlayer.Parse("random");
+            var noises = new[] { 0.6, 0.45, 0.32, 0.22, 0.16, 0.11, 0.08, 0.055, 0.04, 0.028, 0.02, 0.014, 0.01, 0.007, 0.005, 0.0035, 0.0 };
             foreach (var variant in Variants(args[1]).Where(v => v != BackgammonVariant.Sreshta))
             {
                 var clock = Stopwatch.StartNew();
-                double Against(double noise, ArenaPlayer opponent, bool elo)
+                var players = new List<ArenaPlayer> { ArenaPlayer.Parse("random") };
+                players.AddRange(noises.Select(ArenaPlayer.Noisy));
+                players.Add(ArenaPlayer.Parse("L6"));
+                var wins = new double[players.Count, players.Count];
+                for (var i = 0; i < players.Count; i++)
                 {
-                    var stats = ArenaRunner.PlayPairs(variant, ArenaPlayer.Noisy(noise), opponent, pairs, Environment.ProcessorCount);
-                    Console.WriteLine($"    {variant} {stats}");
-                    return elo ? stats.Elo : stats.WinRate;
+                    for (var j = i + 1; j <= Math.Min(i + 2, players.Count - 1); j++)
+                    {
+                        var stats = ArenaRunner.PlayPairs(variant, players[i], players[j], pairs, Environment.ProcessorCount, seedBase: 1 + (7919 * ((i * players.Count) + j)));
+                        wins[i, j] = stats.WinsA;
+                        wins[j, i] = stats.Matches - stats.WinsA;
+                        Console.WriteLine($"    {variant} {stats}");
+                    }
                 }
 
-                var noises = new double[Backgammon.AI.BackgammonBot.Levels];
-                noises[0] = LargestNoise(0.002, 1.0, noise => Against(noise, random, elo: false) >= 0.75);
-                var bottom = Against(noises[0], strong, elo: true);
-                for (var level = 2; level <= 5; level++)
+                var ratings = BradleyTerry.Fit(wins);
+                var random = ratings[0];
+                var top = ratings[^1];
+                Console.WriteLine($"  {variant} ratings, random = 0: " + string.Join(", ", players.Select((p, i) => $"{p.Name} {ratings[i] - random:F0}")));
+
+                // Rating as a function of the noise: player i + 1 has noises[i], weakest first. Find the first pair
+                // of neighbours whose ratings straddle the target and interpolate in the logarithm of the noise (a
+                // noise of 0 counts as 0.002 there).
+                double NoiseFor(double rating)
                 {
-                    var target = bottom * (6 - level) / 5;
-                    noises[level - 1] = LargestNoise(0.0005, noises[level - 2], noise => Against(noise, strong, elo: true) >= target);
+                    if (rating <= ratings[1])
+                    {
+                        return noises[0];
+                    }
+
+                    for (var i = 0; i + 1 < noises.Length; i++)
+                    {
+                        double weaker = ratings[i + 1], stronger = ratings[i + 2];
+                        if (rating >= Math.Min(weaker, stronger) && rating <= Math.Max(weaker, stronger))
+                        {
+                            var share = Math.Abs(stronger - weaker) < 1e-9 ? 0 : (rating - weaker) / (stronger - weaker);
+                            var from = Math.Log(Math.Max(noises[i], 0.002));
+                            var to = Math.Log(Math.Max(noises[i + 1], 0.002));
+                            return Math.Exp(from + (share * (to - from)));
+                        }
+                    }
+
+                    return 0;
                 }
 
-                Console.WriteLine($"{variant} [{clock.Elapsed.TotalMinutes:F1} min]: level 1 is {bottom:F0} Elo below level 6; noise by level: {{ {string.Join(", ", noises.Select(n => n.ToString("0.####", CultureInfo.InvariantCulture)))} }}");
+                var bottom = random + 191;
+                var levels = new double[Backgammon.AI.BackgammonBot.Levels];
+                for (var level = 1; level <= 5; level++)
+                {
+                    levels[level - 1] = NoiseFor(bottom + ((top - bottom) * (level - 1) / 5));
+                }
+
+                Console.WriteLine($"{variant} [{clock.Elapsed.TotalMinutes:F1} min]: random 0, level 1 at {bottom - random:F0}, level 6 at {top - random:F0}, a step of {(top - bottom) / 5:F0} Elo; noise by level: {{ {string.Join(", ", levels.Select(n => n.ToString("0.####", CultureInfo.InvariantCulture)))} }}");
             }
         }
 
@@ -193,30 +235,6 @@ namespace Backgammon.Arena
                     $"{version,-10} generation {generation:F1} us a stage (doubles {doubles / (stages * 6.0 / 21):F1} us), {(double)total / stages:F1} ends; " +
                     $"evaluation: baseline {Time(baseline):F2} us, network {Time(neural):F2} us");
             }
-        }
-
-        /// <summary>The largest noise in [low, high] for which <paramref name="holds"/> is true, by bisection on its logarithm.</summary>
-        private static double LargestNoise(double low, double high, Func<double, bool> holds)
-        {
-            if (holds(high))
-            {
-                return high;
-            }
-
-            for (var step = 0; step < 7; step++)
-            {
-                var middle = Math.Sqrt(low * high);
-                if (holds(middle))
-                {
-                    low = middle;
-                }
-                else
-                {
-                    high = middle;
-                }
-            }
-
-            return low;
         }
     }
 }
