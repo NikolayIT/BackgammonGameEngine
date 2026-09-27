@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- The tools live outside src (and outside the solution) but build with the same settings and analyzers. -->
+  <Import Project="$(MSBuildThisFileDirectory)../src/Directory.Build.props" />
+
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)../src/.globalconfig" />
+  </ItemGroup>
+
+</Project>

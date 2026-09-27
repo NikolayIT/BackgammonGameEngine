@@ -2,3 +2,4 @@
 *.sh text eol=lf
 *.bin binary
 *.png binary
+test-vectors/** text eol=lf

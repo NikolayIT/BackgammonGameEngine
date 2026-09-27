@@ -45,6 +45,12 @@ jobs:
           dotnet test --solution Backgammon.slnx -c Release --no-build
           --report-xunit-trx --report-xunit-trx-filename test-results.trx
 
+      # The vectors come from fixed seeds: writing them again must not change a byte.
+      - name: Test vectors are reproducible
+        run: |
+          dotnet run --project tools/Backgammon.Arena -c Release -- vectors
+          git diff --exit-code test-vectors
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7
