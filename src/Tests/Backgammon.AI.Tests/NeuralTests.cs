@@ -59,6 +59,37 @@ namespace Backgammon.AI.Tests
         }
 
         [Theory]
+        [InlineData(12, 7)] // an unknown version
+        [InlineData(20, 0)] // no hidden layer: it used to load as a constant network
+        [InlineData(20, -8)] // it used to throw OverflowException
+        [InlineData(20, (1 << 24) + 8)] // 256 inputs times this overflows to a first layer of 2,048 weights
+        public void AFileWithAnImpossibleSizeOrVersionShouldBeRefused(int offset, int value)
+        {
+            var network = NeuralNetwork.CreateRandom(BackgammonVersion.Obiknovena, FeatureEncoder.Inputs, 8, seed: 1);
+            using var file = new MemoryStream();
+            network.Write(file);
+            var bytes = file.ToArray();
+            BitConverter.GetBytes(value).CopyTo(bytes, offset);
+
+            Assert.Throws<InvalidDataException>(() => NeuralNetwork.Read(new MemoryStream(bytes)));
+        }
+
+        [Fact]
+        public void AWarmStartCopyShouldCarryTheVersionItIsTrainedFor()
+        {
+            // The trainer's --init copies another version's network; its files must be tagged with the new version,
+            // or the bots refuse the network on its first decision.
+            var obiknovena = NeuralNetwork.CreateRandom(BackgammonVersion.Obiknovena, FeatureEncoder.Inputs, 8, seed: 1);
+
+            var chelebi = obiknovena.Copy("init", BackgammonVersion.Chelebi);
+
+            Assert.Equal(BackgammonVersion.Chelebi, chelebi.Version);
+            Assert.Equal(BackgammonVersion.Chelebi, chelebi.Copy("saved").Version);
+            Assert.Equal(obiknovena.W1, chelebi.W1);
+            Assert.Equal(obiknovena.B2, chelebi.B2);
+        }
+
+        [Theory]
         [InlineData(BackgammonVersion.Obiknovena)]
         [InlineData(BackgammonVersion.Gyulbara)]
         [InlineData(BackgammonVersion.Tapa)]

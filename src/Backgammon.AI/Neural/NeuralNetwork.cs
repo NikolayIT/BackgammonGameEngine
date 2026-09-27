@@ -24,6 +24,10 @@ namespace Backgammon.AI.Neural
     internal sealed class NeuralNetwork
     {
         public const int Outputs = 3;
+
+        /// <summary>The largest hidden layer a network file may have.</summary>
+        public const int MaxHidden = 4096;
+
         private const int Magic = 0x4E4E4742; // "BGNN"
         private const int FormatVersion = 1;
 
@@ -107,6 +111,13 @@ namespace Backgammon.AI.Neural
                 throw new InvalidDataException("The network does not fit the encoder.");
             }
 
+            // A corrupt size would otherwise load a constant network (0), throw the wrong exception (below 0), or
+            // overflow inputs * hidden into a first layer too short for the evaluation's unchecked reads.
+            if (!Enum.IsDefined(version) || hidden < Vector256<float>.Count || hidden > MaxHidden || hidden % Vector256<float>.Count != 0)
+            {
+                throw new InvalidDataException($"The network's version ({(int)version}) or hidden layer ({hidden}) is impossible.");
+            }
+
             var description = reader.ReadString();
             var network = new NeuralNetwork(version, inputs, hidden, description);
             ReadFloats(reader, network.W1);
@@ -133,9 +144,12 @@ namespace Backgammon.AI.Neural
             writer.Write(MemoryMarshal.AsBytes(this.B2.AsSpan()));
         }
 
-        public NeuralNetwork Copy(string description)
+        public NeuralNetwork Copy(string description) => this.Copy(description, this.Version);
+
+        /// <summary>A copy for another version, such as a network warm-started from another version's weights.</summary>
+        public NeuralNetwork Copy(string description, BackgammonVersion version)
         {
-            var copy = new NeuralNetwork(this.Version, this.Inputs, this.Hidden, description);
+            var copy = new NeuralNetwork(version, this.Inputs, this.Hidden, description);
             this.W1.CopyTo(copy.W1, 0);
             this.B1.CopyTo(copy.B1, 0);
             this.W2.CopyTo(copy.W2, 0);

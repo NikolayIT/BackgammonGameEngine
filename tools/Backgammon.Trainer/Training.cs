@@ -21,8 +21,9 @@ namespace Backgammon.Trainer
     {
         public static void Train(TrainingSettings settings)
         {
+            // A warm start takes the weights of the --init network but trains, and tags its files, as --version.
             var network = settings.Init != null
-                ? Load(settings.Init).Copy("init " + Path.GetFileName(settings.Init))
+                ? Load(settings.Init).Copy("init " + Path.GetFileName(settings.Init), settings.Version)
                 : NeuralNetwork.CreateRandom(settings.Version, FeatureEncoder.Inputs, settings.Hidden, settings.Seed);
             var parameters = network.ParameterCount;
             var buffers = new float[settings.Batch][];
