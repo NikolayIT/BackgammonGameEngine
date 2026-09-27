@@ -100,7 +100,7 @@ namespace Backgammon.AI.Search
 
             // Optionally, the few best plays that hand the turn over are looked at one roll deeper.
             var opponent = 1 - situation.Mover;
-            if (settings.OneRoll > 0 && next.Kind == ContinuationKind.OpponentRolls && !situation.Rolls.NextEscalates(situation.Position, opponent))
+            if (settings.OneRoll > 0 && next.Kind == ContinuationKind.OpponentRolls)
             {
                 this.order.Sort(this.ByScoreDescending);
                 var deep = Math.Min(settings.OneRoll, this.order.Count);
@@ -267,40 +267,84 @@ namespace Backgammon.AI.Search
         }
 
         /// <summary>
-        /// The mover's match-winning chance after the opponent rolls from <paramref name="position"/>: for each of the 21
-        /// rolls the opponent's best play (by the same evaluator), weighted by the roll's chance.
+        /// The mover's match-winning chance after the opponent rolls from <paramref name="position"/>. For each of the
+        /// 21 rolls the opponent makes its best play by the same evaluator, weighted by the roll's chance. When the
+        /// opponent's doubles escalate, it plays the chain greedily stage by stage. A chain it cannot finish is
+        /// simply stopped there: the remainder the mover would get is left out, a small bias against the mover.
         /// </summary>
         private double OneRoll(in Position position)
         {
             var mover = this.situation.Mover;
             var opponent = 1 - mover;
+            var escalates = this.situation.Rolls.NextEscalates(this.situation.Position, opponent);
+            var rolls = this.situation.Rolls.After(opponent);
             var ends = this.lists[1];
             var total = 0.0;
             for (var high = 1; high <= 6; high++)
             {
                 for (var low = 1; low <= high; low++)
                 {
-                    var dice = high == low ? StageDice.Same(high, 4) : StageDice.Distinct(high, low);
-                    this.generator.Generate(position, opponent, dice, ends);
-                    var worst = double.PositiveInfinity;
-                    for (var i = 0; i < ends.Count; i++)
+                    var weight = (high == low ? 1.0 : 2.0) / 36;
+                    if (high != low || !escalates)
                     {
-                        var value = ends[i].End != GameEnd.None ? this.Terminal(ends[i].Position, ends[i].End, opponent) : this.Quiet(ends[i].Position, mover);
-                        worst = Math.Min(worst, value);
+                        total += weight * this.BestReply(position, high == low ? StageDice.Same(high, 4) : StageDice.Distinct(high, low), ends, rolls, out _, out _);
+                        continue;
                     }
 
-                    total += (high == low ? 1.0 : 2.0) / 36 * worst;
+                    // An escalating double: four of each die from this one up to 6, stage by stage.
+                    var current = position;
+                    var value = 0.0;
+                    for (var die = high; die <= 6; die++)
+                    {
+                        value = this.BestReply(current, StageDice.Same(die, 4), ends, rolls, out var chosen, out var complete);
+                        if (!complete)
+                        {
+                            break;
+                        }
+
+                        current = chosen;
+                    }
+
+                    total += weight * value;
                 }
             }
 
             return total;
         }
 
+        /// <summary>
+        /// The opponent's best play of a stage, by the mover's match-winning chance with the mover to roll next. It
+        /// gives the position chosen, and whether the stage was fully played and the game goes on (so a chain can
+        /// continue).
+        /// </summary>
+        private double BestReply(in Position position, StageDice dice, List<StageEnd> ends, RollCounts rolls, out Position chosen, out bool complete)
+        {
+            var mover = this.situation.Mover;
+            var playable = this.generator.Generate(position, 1 - mover, dice, ends);
+            var worst = double.PositiveInfinity;
+            var best = 0;
+            for (var i = 0; i < ends.Count; i++)
+            {
+                var value = ends[i].End != GameEnd.None ? this.Terminal(ends[i].Position, ends[i].End, 1 - mover) : this.Quiet(ends[i].Position, mover, rolls);
+                if (value < worst)
+                {
+                    worst = value;
+                    best = i;
+                }
+            }
+
+            chosen = ends[best].Position;
+            complete = playable == dice.Count && ends[best].End == GameEnd.None;
+            return worst;
+        }
+
         /// <summary>The mover's match-winning chance in a quiet position with <paramref name="onRoll"/> to roll.</summary>
-        private double Quiet(in Position position, int onRoll)
+        private double Quiet(in Position position, int onRoll) => this.Quiet(position, onRoll, this.situation.Rolls);
+
+        private double Quiet(in Position position, int onRoll, RollCounts rolls)
         {
             this.evaluations++;
-            var outcome = this.evaluator.Evaluate(position, onRoll, this.situation.Rolls);
+            var outcome = this.evaluator.Evaluate(position, onRoll, rolls);
             return this.Equity(onRoll == this.situation.Mover ? outcome : outcome.Flip());
         }
 

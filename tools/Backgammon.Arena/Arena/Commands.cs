@@ -130,6 +130,71 @@ namespace Backgammon.Arena
             }
         }
 
+        /// <summary>
+        /// <c>bench [positions]</c>: the engine's speed on one thread. For each version it times the move generator over
+        /// sampled positions and all 21 rolls, the evaluators, and whole random games through <see cref="BackgammonMatch"/>.
+        /// </summary>
+        public static void Bench(string[] args)
+        {
+            var count = args.Length > 1 ? int.Parse(args[1], CultureInfo.InvariantCulture) : 2_000;
+            foreach (var version in Enum.GetValues<BackgammonVersion>())
+            {
+                var samples = VectorWriter.SamplePositions(version, count, seed: 77);
+                var generator = new Backgammon.Logic.Rules.StageGenerator();
+                var ends = new List<Backgammon.Logic.Rules.StageEnd>();
+                var clock = Stopwatch.StartNew();
+                long stages = 0, total = 0;
+                double doubles = 0;
+                for (var round = 0; round < 3; round++)
+                {
+                    foreach (var (position, seat) in samples)
+                    {
+                        for (var high = 1; high <= 6; high++)
+                        {
+                            for (var low = 1; low <= high; low++)
+                            {
+                                var started = Stopwatch.GetTimestamp();
+                                generator.Generate(position, seat, high == low ? Backgammon.Logic.Rules.StageDice.Same(high, 4) : Backgammon.Logic.Rules.StageDice.Distinct(high, low), ends);
+                                if (high == low)
+                                {
+                                    doubles += Stopwatch.GetElapsedTime(started).TotalMicroseconds;
+                                }
+
+                                stages++;
+                                total += ends.Count;
+                            }
+                        }
+                    }
+                }
+
+                var generation = clock.Elapsed.TotalMicroseconds / stages;
+                var baseline = Backgammon.AI.Evaluation.BaselineEvaluator.Instance;
+                var network = Backgammon.AI.Neural.NeuralNetwork.CreateRandom(version, Backgammon.AI.Neural.FeatureEncoder.Inputs, 128, 1);
+                var neural = new Backgammon.AI.Neural.NeuralEvaluator(network);
+                var rolls = new Backgammon.AI.Evaluation.RollCounts(5, 5);
+                double Time(Backgammon.AI.Evaluation.IEvaluator evaluator)
+                {
+                    var watch = Stopwatch.StartNew();
+                    var sum = 0.0;
+                    for (var round = 0; round < 20; round++)
+                    {
+                        foreach (var (position, seat) in samples)
+                        {
+                            sum += evaluator.Evaluate(position, seat, rolls).Win;
+                        }
+                    }
+
+                    return sum >= 0 ? watch.Elapsed.TotalMicroseconds / (20.0 * samples.Count) : 0;
+                }
+
+                Time(baseline);
+                Time(neural);
+                Console.WriteLine(
+                    $"{version,-10} generation {generation:F1} us a stage (doubles {doubles / (stages * 6.0 / 21):F1} us), {(double)total / stages:F1} ends; " +
+                    $"evaluation: baseline {Time(baseline):F2} us, network {Time(neural):F2} us");
+            }
+        }
+
         /// <summary>The largest noise in [low, high] for which <paramref name="holds"/> is true, by bisection on its logarithm.</summary>
         private static double LargestNoise(double low, double high, Func<double, bool> holds)
         {

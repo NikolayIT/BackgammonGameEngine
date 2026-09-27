@@ -32,6 +32,10 @@ namespace Backgammon.Arena
                     Commands.Calibrate(args);
                     return 0;
 
+                case "bench":
+                    Commands.Bench(args);
+                    return 0;
+
                 case "timing":
                     Commands.Timing(args);
                     return 0;
@@ -43,6 +47,7 @@ namespace Backgammon.Arena
                     Console.WriteLine("  ladder <variant|all> [pairs] [players...]");
                     Console.WriteLine("  calibrate <variant|all> [pairs]");
                     Console.WriteLine("  timing <variant|all> [matches] [player]");
+                    Console.WriteLine("  bench [positions]");
                     return command == "help" ? 0 : 1;
             }
         }

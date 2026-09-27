@@ -6,7 +6,7 @@ namespace Backgammon.AI.Search
     /// <param name="EvaluationBudget">A cap on evaluations for the look-ahead, which keeps every decision fast.</param>
     /// <param name="OneRoll">
     /// How many of the best plays that end the turn are looked at one roll deeper (0: none): the opponent's best reply
-    /// to each of its 21 rolls, averaged by their chances. Only when the opponent's next roll does not escalate.
+    /// to each of its 21 rolls, averaged by their chances (an escalating double played out stage by stage).
     /// </param>
     internal readonly record struct SearchSettings(double Noise, int LookAhead, int EvaluationBudget, int OneRoll = 0);
 }
