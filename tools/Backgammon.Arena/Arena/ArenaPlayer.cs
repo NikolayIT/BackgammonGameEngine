@@ -27,6 +27,7 @@ namespace Backgammon.Arena
         /// <item><c>net:&lt;file&gt;</c>: a network from a file, with level 6's search.</item>
         /// <item><c>net1:&lt;file&gt;</c>: the same, looking one roll deeper at its two best plays.</item>
         /// <item><c>noise:&lt;σ&gt;</c>: the strongest evaluator with that much noise and no look-ahead.</item>
+        /// <item><c>search:&lt;look-ahead&gt;:&lt;one roll&gt;:&lt;budget&gt;</c>: the strongest evaluator with those search settings.</item>
         /// </list>
         /// </summary>
         public static ArenaPlayer Parse(string name) => name switch
@@ -37,6 +38,7 @@ namespace Backgammon.Arena
             _ when name.Length == 2 && name[0] == 'L' && char.IsDigit(name[1]) => new LevelPlayer(name[1] - '0'),
             _ when name.StartsWith("net:", StringComparison.Ordinal) => NetworkPlayer(name, name[4..], 0),
             _ when name.StartsWith("net1:", StringComparison.Ordinal) => NetworkPlayer(name, name[5..], 2),
+            _ when name.StartsWith("search:", StringComparison.Ordinal) => Searching(name),
             _ when name.StartsWith("noise:", StringComparison.Ordinal) => Noisy(double.Parse(name[6..], System.Globalization.CultureInfo.InvariantCulture)),
             _ => throw new ArgumentException($"Unknown player '{name}'."),
         };
@@ -46,6 +48,13 @@ namespace Backgammon.Arena
             new EvaluatorPlayer($"noise:{noise:0.####}", BotLevels.EvaluatorFor, new SearchSettings(noise, 0, 0));
 
         public abstract BackgammonAction Choose(BackgammonSeatView view, Random random);
+
+        private static ArenaPlayer Searching(string name)
+        {
+            var parts = name.Split(':');
+            var settings = new SearchSettings(0, int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture), int.Parse(parts[3], System.Globalization.CultureInfo.InvariantCulture), int.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture));
+            return new EvaluatorPlayer(name, BotLevels.EvaluatorFor, settings);
+        }
 
         private static ArenaPlayer NetworkPlayer(string name, string path, int oneRoll)
         {

@@ -33,9 +33,14 @@ namespace Backgammon.AI.Search
         private (double WinSingle, double WinDouble, double LoseSingle, double LoseDouble, double Draw) after;
         private int evaluations;
 
+        // Evaluations beyond this count cut the deep search short (see Deepen).
+        private int limit = int.MaxValue;
+
         public static Chooser Current => perThread ??= new Chooser();
 
         public int Evaluations => this.evaluations;
+
+        private bool Exhausted => this.evaluations > this.limit;
 
         /// <summary>
         /// Chooses among the stage's distinct ends; returns them (in canonical order) and the index of the choice.
@@ -45,6 +50,7 @@ namespace Backgammon.AI.Search
             this.situation = situation;
             this.evaluator = evaluator;
             this.evaluations = 0;
+            this.limit = int.MaxValue;
             var ends = this.lists[0];
             var playable = this.generator.Generate(situation.Position, situation.Mover, situation.Stage, ends);
             if (ends.Count == 1)
@@ -67,62 +73,17 @@ namespace Backgammon.AI.Search
                 this.order.Add(i);
             }
 
-            // Then the few best are played on through the known stages that follow.
+            // Then the few best are played on through the known stages that follow, or, when the turn ends, looked at
+            // one roll deeper.
             if (settings.LookAhead > 0 && next.Kind is ContinuationKind.OwnStages or ContinuationKind.OpponentRemainder)
             {
-                this.order.Sort(this.ByScoreDescending);
-                var deep = Math.Min(settings.LookAhead, this.order.Count);
-                var best = double.NegativeInfinity;
-                for (var rank = 0; rank < deep && this.evaluations < settings.EvaluationBudget; rank++)
-                {
-                    var index = this.order[rank];
-                    if (ends[index].End != GameEnd.None)
-                    {
-                        continue;
-                    }
-
-                    this.scores[index] = next.Kind == ContinuationKind.OwnStages
-                        ? this.OwnStages(ends[index].Position, next.Stages, 0, situation.IsRemainder, 1)
-                        : this.OpponentRemainder(ends[index].Position, next.Stages, 1);
-                    best = Math.Max(best, this.scores[index]);
-                }
-
-                // The ends left unexplored keep their first value, but may not beat an explored one on it alone.
-                for (var rank = deep; rank < this.order.Count && !double.IsNegativeInfinity(best); rank++)
-                {
-                    var index = this.order[rank];
-                    if (ends[index].End == GameEnd.None)
-                    {
-                        this.scores[index] = Math.Min(this.scores[index], best - 1e-9);
-                    }
-                }
+                this.Deepen(ends, settings.LookAhead, settings.EvaluationBudget, index => next.Kind == ContinuationKind.OwnStages
+                    ? this.OwnStages(ends[index].Position, next.Stages, 0, situation.IsRemainder, 1)
+                    : this.OpponentRemainder(ends[index].Position, next.Stages, 1));
             }
-
-            // Optionally, the few best plays that hand the turn over are looked at one roll deeper.
-            var opponent = 1 - situation.Mover;
-            if (settings.OneRoll > 0 && next.Kind == ContinuationKind.OpponentRolls)
+            else if (settings.OneRoll > 0 && next.Kind == ContinuationKind.OpponentRolls)
             {
-                this.order.Sort(this.ByScoreDescending);
-                var deep = Math.Min(settings.OneRoll, this.order.Count);
-                var best = double.NegativeInfinity;
-                for (var rank = 0; rank < deep && this.evaluations < settings.EvaluationBudget; rank++)
-                {
-                    var index = this.order[rank];
-                    if (ends[index].End == GameEnd.None)
-                    {
-                        this.scores[index] = this.OneRoll(ends[index].Position);
-                        best = Math.Max(best, this.scores[index]);
-                    }
-                }
-
-                for (var rank = deep; rank < this.order.Count && !double.IsNegativeInfinity(best); rank++)
-                {
-                    var index = this.order[rank];
-                    if (ends[index].End == GameEnd.None)
-                    {
-                        this.scores[index] = Math.Min(this.scores[index], best - 1e-9);
-                    }
-                }
+                this.Deepen(ends, settings.OneRoll, settings.EvaluationBudget, index => this.OneRoll(ends[index].Position));
             }
 
             var choice = 0;
@@ -146,6 +107,49 @@ namespace Backgammon.AI.Search
             var u = 1 - random.NextDouble();
             var v = random.NextDouble();
             return Math.Sqrt(-2 * Math.Log(u)) * Math.Cos(2 * Math.PI * v);
+        }
+
+        /// <summary>
+        /// Replaces the first values of the <paramref name="count"/> best non-final ends with deeper ones. The deeper
+        /// search may use <paramref name="budget"/> evaluations. An end whose search runs over keeps its first value,
+        /// and the search stops there. That bounds the time of every decision without a clock, so the result stays
+        /// deterministic. The ends not searched keep their first values but may not beat a searched end on them alone.
+        /// </summary>
+        private void Deepen(List<StageEnd> ends, int count, int budget, Func<int, double> deeper)
+        {
+            this.order.Sort(this.ByScoreDescending);
+            this.limit = this.evaluations + budget;
+            var best = double.NegativeInfinity;
+            var searched = 0;
+            for (var rank = 0; rank < Math.Min(count, this.order.Count); rank++)
+            {
+                var index = this.order[rank];
+                if (ends[index].End != GameEnd.None)
+                {
+                    searched = rank + 1;
+                    continue;
+                }
+
+                var value = deeper(index);
+                if (this.Exhausted)
+                {
+                    break;
+                }
+
+                this.scores[index] = value;
+                best = Math.Max(best, value);
+                searched = rank + 1;
+            }
+
+            this.limit = int.MaxValue;
+            for (var rank = searched; rank < this.order.Count && !double.IsNegativeInfinity(best); rank++)
+            {
+                var index = this.order[rank];
+                if (ends[index].End == GameEnd.None)
+                {
+                    this.scores[index] = Math.Min(this.scores[index], best - 1e-9);
+                }
+            }
         }
 
         private int ByScoreDescending(int a, int b)
@@ -216,7 +220,7 @@ namespace Backgammon.AI.Search
             }
 
             var chosen = ends[bestIndex];
-            if (chosen.End != GameEnd.None || this.evaluations > 50_000)
+            if (chosen.End != GameEnd.None || this.Exhausted)
             {
                 return best;
             }
@@ -241,6 +245,11 @@ namespace Backgammon.AI.Search
             var position = start;
             foreach (var stage in stages)
             {
+                if (this.Exhausted)
+                {
+                    return 0;
+                }
+
                 var ends = this.lists[Math.Min(depth, this.lists.Length - 1)];
                 this.generator.Generate(position, opponent, stage, ends);
                 var bestIndex = 0;
@@ -284,6 +293,11 @@ namespace Backgammon.AI.Search
             {
                 for (var low = 1; low <= high; low++)
                 {
+                    if (this.Exhausted)
+                    {
+                        return 0;
+                    }
+
                     var weight = (high == low ? 1.0 : 2.0) / 36;
                     if (high != low || !escalates)
                     {
@@ -344,6 +358,12 @@ namespace Backgammon.AI.Search
         private double Quiet(in Position position, int onRoll, RollCounts rolls)
         {
             this.evaluations++;
+            if (this.Exhausted)
+            {
+                // Over budget: the deep value being built will be thrown away, so do not spend time on it.
+                return 0;
+            }
+
             var outcome = this.evaluator.Evaluate(position, onRoll, rolls);
             return this.Equity(onRoll == this.situation.Mover ? outcome : outcome.Flip());
         }

@@ -44,7 +44,7 @@ namespace Backgammon.AI
 
             // Level 6 plays on through the known stages of a chain and looks one roll deeper at its two best plays.
             return level == BackgammonBot.Levels
-                ? new SearchSettings(0, LookAhead: 3, EvaluationBudget: 4_000, OneRoll: 2)
+                ? new SearchSettings(0, LookAhead: 3, EvaluationBudget: 3_000, OneRoll: 2)
                 : new SearchSettings(Noise[(int)version][level - 1], LookAhead: 0, EvaluationBudget: 0);
         }
 
