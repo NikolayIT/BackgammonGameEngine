@@ -78,7 +78,12 @@ Backgammon.Trainer train --version chelebi    --seed 1 --games 2000000 --eval-ev
 ```
 
 The step sizes, λ, batch and hidden size are the defaults (TrainingSettings.cs). Each file records its settings in its
-description. The shipped files are the final networks of these runs. `NeuralTests` pins their SHA-256. To ship a
+description. The shipped files are the final networks of these runs. `NeuralTests` pins their SHA-256.
+
+The shipped networks were trained before a fix to self-play (2026-09-27). Self-play used to value a play in the
+middle of a remainder as if the opponent rolled next, when the player of a remainder rolls next itself. Only гюлбара
+and челеби have remainders. The current trainer still reproduces обикновена and тапа exactly; to reproduce гюлбара
+and челеби byte for byte, build the trainer at commit `6d23ae9`. To ship a
 network, copy it to `src/Backgammon.AI/Neural/Weights/{version}.bin`, list the version in `Networks.Shipped`, and
 update the hash in the test.
 

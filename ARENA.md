@@ -40,6 +40,14 @@ legal plays.
 
 - **Level 6 against its neighbours.** L5 wins 13.8% (обикновена), 32.2% (гюлбара), 17.5% (тапа), 40.3% (челеби) and
   8.7% (среща) of its matches against it. Random play won 0, 3, 0, 12 and 0 of 600.
+- **The remainder fix (2026-09-27) leaves these ratings as they are.** They were measured before it. The bots used
+  to value a play in the middle of a remainder as if the opponent rolled next, and the fix changes about half of those
+  plays, but such plays are rare. Head to head, the fixed bots against the old ones scored:
+
+  | Level | Гюлбара | Челеби |
+  | --- | --- | --- |
+  | 6 | 50.2% ± 1.0% (10,000 matches) | 50.1% ± 0.6% (30,000) |
+  | 3 | 49.7% ± 0.5% (40,000) | 49.4% ± 0.5% (40,000) |
 
 ### How the levels are set
 

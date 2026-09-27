@@ -43,6 +43,13 @@ namespace Backgammon.AI.Search
         private bool Exhausted => this.evaluations > this.limit;
 
         /// <summary>
+        /// Who rolls next after a stage that does not end the game, valuing it as if the turn ended there: after a stage
+        /// of a remainder the mover does, since it rolls as soon as the remainder is played; after the mover's own roll
+        /// or chain the opponent does.
+        /// </summary>
+        public static int OnRollAfter(bool isRemainder, int mover) => isRemainder ? mover : 1 - mover;
+
+        /// <summary>
         /// Chooses among the stage's distinct ends; returns them (in canonical order) and the index of the choice.
         /// </summary>
         public (List<StageEnd> Ends, int Choice) Choose(Situation situation, IEvaluator evaluator, SearchSettings settings, Random? random)
@@ -69,7 +76,7 @@ namespace Backgammon.AI.Search
                 var end = ends[i];
                 this.scores.Add(end.End != GameEnd.None
                     ? this.Terminal(end.Position, end.End, situation.Mover)
-                    : this.Quiet(end.Position, next.Kind == ContinuationKind.MoverRolls ? situation.Mover : 1 - situation.Mover));
+                    : this.Quiet(end.Position, OnRollAfter(situation.IsRemainder, situation.Mover)));
                 this.order.Add(i);
             }
 
@@ -191,8 +198,7 @@ namespace Backgammon.AI.Search
         {
             if (index == stages.Count)
             {
-                // After a remainder the mover rolls; after its own chain the opponent does.
-                return this.Quiet(position, isRemainder ? this.situation.Mover : 1 - this.situation.Mover);
+                return this.Quiet(position, OnRollAfter(isRemainder, this.situation.Mover));
             }
 
             var mover = this.situation.Mover;
@@ -208,7 +214,7 @@ namespace Backgammon.AI.Search
             // Greedy: the end that looks best if the turn ended there (a win is taken at once).
             var bestIndex = 0;
             var best = double.NegativeInfinity;
-            var rollerAfter = isRemainder && index + 1 == stages.Count ? mover : 1 - mover;
+            var rollerAfter = OnRollAfter(isRemainder, mover);
             for (var i = 0; i < ends.Count; i++)
             {
                 var value = ends[i].End != GameEnd.None ? this.Terminal(ends[i].Position, ends[i].End, mover) : this.Quiet(ends[i].Position, rollerAfter);

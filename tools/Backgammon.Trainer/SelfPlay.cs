@@ -4,6 +4,7 @@ namespace Backgammon.Trainer
     using System.Collections.Generic;
 
     using Backgammon.AI.Evaluation;
+    using Backgammon.AI.Search;
     using Backgammon.Logic;
     using Backgammon.Logic.Rules;
 
@@ -74,8 +75,8 @@ namespace Backgammon.Trainer
         {
             var mover = state.Mover;
 
-            // Who rolls after a play that does not end the game (every legal play uses the same number of dice).
-            var moverRollsNext = state.IsRemainder && state.StageIndex + 1 == state.Stages.Count;
+            // Who rolls after a play that does not end the game, as the bots see it.
+            var moverRollsNext = Chooser.OnRollAfter(state.IsRemainder, mover) == mover;
             var best = 0;
             var bestValue = double.NegativeInfinity;
             for (var i = 0; i < ends.Count; i++)
