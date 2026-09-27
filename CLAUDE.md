@@ -62,7 +62,8 @@ RULES.md.
 - **Tests:** xUnit v3 on Microsoft Testing Platform. Run them from `src`: `dotnet test --solution Backgammon.slnx`.
   - `BACKGAMMON_LONG=1` switches on the full differential and property runs (100k+ per version). They take about an
     hour on 20 threads. `long-tests.yml` runs them on demand.
-  - `test-vectors/` must be reproduced exactly: CI writes them again and diffs them.
+  - `test-vectors/` must be reproduced exactly: CI writes them again and diffs them. The vector tests look for the
+    `test-vectors` folder above the test binaries, so a copy of `bin` run outside the repo fails only those 10 tests.
 - Commit and push after each tested chunk of work. Never add Co-Authored-By or other attribution lines.
 
 ## Lessons (do not repeat)
