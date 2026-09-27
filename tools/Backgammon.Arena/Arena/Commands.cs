@@ -60,6 +60,8 @@ namespace Backgammon.Arena
                 {
                     Console.WriteLine($"  {names[i],-10} {800 + ratings[i] - anchor,7:F0}");
                 }
+
+                SuggestNoises(variant, names, ratings);
             }
         }
 
@@ -256,6 +258,41 @@ namespace Backgammon.Arena
                     $"{version,-10} generation {generation:F1} us a stage (doubles {doubles / (stages * 6.0 / 21):F1} us), {(double)total / stages:F1} ends; " +
                     $"evaluation: baseline {Time(baseline):F2} us, network {Time(neural):F2} us, layout {latest} {Time(neural2):F2} us (its extra inputs {Features():F2} us)");
             }
+        }
+
+        /// <summary>
+        /// When a ladder has all six levels of a single version, prints the noises that would put levels 2..5 at even
+        /// rating steps between its own level 1 and level 6, interpolated in the logarithm of the noise between the
+        /// levels' measured ratings (a noise of 0 counts as 0.002).
+        /// </summary>
+        private static void SuggestNoises(BackgammonVariant variant, string[] names, double[] ratings)
+        {
+            var levels = Enumerable.Range(1, AI.BackgammonBot.Levels).Select(level => Array.IndexOf(names, "L" + level)).ToArray();
+            if (variant == BackgammonVariant.Sreshta || levels.Any(index => index < 0))
+            {
+                return;
+            }
+
+            var version = (BackgammonVersion)(int)variant;
+            var noise = Enumerable.Range(1, AI.BackgammonBot.Levels).Select(level => Math.Log(Math.Max(AI.BotLevels.SettingsFor(level, version).Noise, 0.002))).ToArray();
+            var rating = levels.Select(index => ratings[index]).ToArray();
+            var suggested = new double[AI.BackgammonBot.Levels - 1];
+            suggested[0] = Math.Exp(noise[0]);
+            for (var level = 2; level < AI.BackgammonBot.Levels; level++)
+            {
+                var target = rating[0] + ((rating[^1] - rating[0]) * (level - 1) / (AI.BackgammonBot.Levels - 1));
+                var j = 0;
+                while (j < rating.Length - 2 && rating[j + 1] < target)
+                {
+                    j++;
+                }
+
+                var span = rating[j + 1] - rating[j];
+                var share = Math.Abs(span) < 1e-9 ? 0 : Math.Clamp((target - rating[j]) / span, 0, 1);
+                suggested[level - 1] = Math.Exp(noise[j] + (share * (noise[j + 1] - noise[j])));
+            }
+
+            Console.WriteLine($"  even steps of {(rating[^1] - rating[0]) / (AI.BackgammonBot.Levels - 1):F0} Elo would take noises {{ {string.Join(", ", suggested.Select(n => n.ToString("0.####", CultureInfo.InvariantCulture)))}, 0 }}");
         }
     }
 }
