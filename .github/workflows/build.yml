@@ -1,0 +1,64 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    name: Build and test
+    # ednaigra.com runs on Linux, so CI builds and tests there too.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore src/Backgammon.slnx
+
+      # CI=true is set by GitHub Actions, so Directory.Build.props treats warnings as errors here.
+      - name: Build
+        run: dotnet build src/Backgammon.slnx -c Release --no-restore
+
+      # The tests run on Microsoft Testing Platform, which src/global.json turns on for dotnet test,
+      # so this step has to run from the src folder. The long differential and property runs are in
+      # long-tests.yml; here they run their reduced counts.
+      - name: Test
+        working-directory: src
+        run: >
+          dotnet test --solution Backgammon.slnx -c Release --no-build
+          --report-xunit-trx --report-xunit-trx-filename test-results.trx
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: src/**/TestResults/*.trx
+
+      - name: Pack
+        run: |
+          dotnet pack src/Backgammon.Logic/Backgammon.Logic.csproj -c Release --no-build -o artifacts
+          dotnet pack src/Backgammon.AI/Backgammon.AI.csproj -c Release --no-build -o artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-packages
+          path: artifacts/*

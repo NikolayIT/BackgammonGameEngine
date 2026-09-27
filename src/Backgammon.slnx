@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/Backgammon.AI.Tests/Backgammon.AI.Tests.csproj" />
+    <Project Path="Tests/Backgammon.Logic.Tests/Backgammon.Logic.Tests.csproj" />
+  </Folder>
+  <Project Path="Backgammon.AI/Backgammon.AI.csproj" />
+  <Project Path="Backgammon.Logic/Backgammon.Logic.csproj" />
+</Solution>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Copyright>Copyright (c) 2026 Nikolay Kostov</Copyright>
+    <Authors>Nikolay.IT</Authors>
+    <Product>Backgammon (Табла) Bots</Product>
+    <PackageId>BackgammonGameEngine.Bots</PackageId>
+    <Description>Computer players for BackgammonGameEngine: six levels for обикновена, гюлбара, тапа, челеби and среща, from a TD-Gammon-style neural network per version down to calibrated weaker levels. Deterministic for a given view, level and Random, and fast (well under 20 ms a decision).</Description>
+    <PackageTags>backgammon;tabla;табла;bot;neural network;td-gammon;game ai</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/NikolayIT/BackgammonGameEngine</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NikolayIT/BackgammonGameEngine</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Backgammon.AI.Tests" />
+    <InternalsVisibleTo Include="Backgammon.Arena" />
+    <InternalsVisibleTo Include="Backgammon.Trainer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Backgammon.Logic\Backgammon.Logic.csproj" />
+  </ItemGroup>
+
+</Project>

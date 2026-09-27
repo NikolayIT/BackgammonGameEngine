@@ -1,0 +1,19 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+
+# Visual Studio and Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# Training and arena scratch (regenerable, large). The shipped weights in
+# src/Backgammon.AI/Neural/Weights are embedded resources and are committed.
+**/_scratch/
+**/checkpoints/
+
+# Local Claude Code agent state
+.claude/

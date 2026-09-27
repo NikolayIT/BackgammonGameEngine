@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Copyright>Copyright (c) 2026 Nikolay Kostov</Copyright>
+    <Authors>Nikolay.IT</Authors>
+    <Product>Backgammon (Табла) Game Engine</Product>
+    <PackageId>BackgammonGameEngine</PackageId>
+    <Description>Game engine for табла, the Bulgarian family of backgammon games: обикновена (права), гюлбара, тапа, челеби and the traditional среща match. Matches are driven one action at a time, with injected dice for provably fair hosts, per-seat views, replayable match records and move helpers for user interfaces.</Description>
+    <PackageTags>backgammon;tabla;табла;tavla;tavli;plakoto;gul bara;narde;board game;game engine</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/NikolayIT/BackgammonGameEngine</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NikolayIT/BackgammonGameEngine</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- Every public member is documented: CS1591 reports one that is not, and CI treats it as an error. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Backgammon.AI" />
+    <InternalsVisibleTo Include="Backgammon.Logic.Tests" />
+    <InternalsVisibleTo Include="Backgammon.AI.Tests" />
+    <InternalsVisibleTo Include="Backgammon.Arena" />
+    <InternalsVisibleTo Include="Backgammon.Trainer" />
+  </ItemGroup>
+
+</Project>
