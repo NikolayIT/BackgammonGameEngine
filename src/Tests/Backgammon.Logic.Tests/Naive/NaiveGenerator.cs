@@ -46,7 +46,7 @@ namespace Backgammon.Logic.Tests.Naive
                 }
             }
 
-            return new NaiveResult(max, ends);
+            return new NaiveResult(max, ends, legal.Select(s => s.Steps).ToList(), leaves.Select(s => s.Steps).ToList());
         }
 
         /// <summary>The canonical order: the higher point first, then the larger die; a prefix comes first.</summary>
