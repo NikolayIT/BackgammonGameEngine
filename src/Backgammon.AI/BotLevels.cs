@@ -15,13 +15,14 @@ namespace Backgammon.AI
     /// </summary>
     internal static class BotLevels
     {
-        // Noise per version and level 1..6, in match-winning chance, from the arena's calibrate command.
+        // Noise per version and level 1..6, in match-winning chance, from the arena's calibrate command (ARENA.md):
+        // level 1 wins 75% of matches against random play, and the levels above it are even rating steps up to level 6.
         private static readonly double[][] Noise =
         {
-            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
-            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
-            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
-            new[] { 0.30, 0.16, 0.09, 0.05, 0.02, 0 },
+            new[] { 0.3283, 0.1324, 0.0726, 0.041, 0.0207, 0 }, // обикновена: steps of 313 Elo
+            new[] { 0.0593, 0.0334, 0.0204, 0.012, 0.0048, 0 }, // гюлбара: 116 Elo
+            new[] { 0.4283, 0.1387, 0.0705, 0.0387, 0.0175, 0 }, // тапа: 305 Elo
+            new[] { 0.0734, 0.0444, 0.026, 0.015, 0.0046, 0 }, // челеби: 71 Elo
         };
 
         private static readonly Lazy<IEvaluator>[] Evaluators =
