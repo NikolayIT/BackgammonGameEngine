@@ -14,6 +14,8 @@ namespace Backgammon.Trainer
     /// <list type="bullet">
     /// <item><c>train --version tapa --seed 1 --games 1000000 --out tapa.bin</c> trains a network and writes
     /// checkpoints, the best one against the baseline, and a log.</item>
+    /// <item><c>refine --version tapa --init tapa.bin --positions 1000000 --rounds 8 --alpha 0.0003 --alpha-end 0.00003
+    /// --out tapa-r.bin</c> trains a network towards its own one-roll look-ahead (see Refinement).</item>
     /// <item><c>validate --version tapa --weights tapa.bin --eval-pairs 2000</c> measures a network against the
     /// baseline (the ship gate).</item>
     /// <item><c>stats --version tapa --weights tapa.bin --games 20000</c> gives the share of 2-point results and draws
@@ -34,6 +36,10 @@ namespace Backgammon.Trainer
             {
                 case "train":
                     Training.Train(settings);
+                    return 0;
+
+                case "refine":
+                    Refinement.Refine(settings);
                     return 0;
 
                 case "validate":

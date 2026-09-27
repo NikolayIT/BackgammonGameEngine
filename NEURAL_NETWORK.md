@@ -126,6 +126,38 @@ Observations:
 - **Челеби is dominated by luck.** Escalating doubles move up to 84 pips in one roll, which caps how far any evaluator
   can pull ahead. Its TD error stays three times higher than обикновена's.
 
+## Improving the networks (experiments)
+
+Measured on обикновена after 1.0, each candidate against the shipped network, both with level 6's search, in
+duplicate pairs:
+
+| Candidate | Against the shipped network |
+| --- | --- |
+| 256 hidden units instead of 128, TD(λ) from scratch, 2M games | 51.5% ± 1.4% (5,000 matches), +11 Elo, at twice the evaluation cost |
+| Refined, 5 rounds of 1M positions (round 4) | 52.9% ± 1.0% (10,000), +20 Elo |
+| Refined, 11 rounds | 53.6% ± 1.0% (10,000), +25 Elo |
+| Input layout 2, TD(λ) from scratch, 2M games | 55.6% ± 1.0% (10,000), +39 Elo |
+| Input layout 2, then refined 8 rounds of 1M positions | **58.0% ± 1.0% (10,000), +56 Elo** |
+
+- **Refinement** (`Backgammon.Trainer refine`) trains a network towards its own value one roll deeper, on positions
+  from its own self-play: for each of the 21 rolls the roller's best play, valued by the network. It helps because
+  that value is better than the network's own: looking one roll deeper is worth about 100 Elo at level 6. Rounds
+  beyond about 10 add little.
+- **Input layout 2** adds four inputs to the 256: for each side, the share of its 36 rolls that hit (in тапа, pin) a
+  lone checker of the other side, and the longest run of points the other side cannot land on. Blocking and hitting
+  are what the raw board inputs make the network work hardest to see. A network records its layout, so layout-1 and
+  layout-2 networks can play each other; the shipped networks are all layout 1.
+- **Capacity is not the limit.** Doubling the hidden layer gave the least.
+- **The cost.** Layout 2 makes a level-6 decision about 1.6 times slower, which the evaluation budget would have to
+  absorb to keep every decision under 20 ms.
+
+Reproducing the best candidate:
+
+```
+Backgammon.Trainer train  --version obiknovena --seed 1 --games 2000000 --layout 2 --eval-every 500000 --eval-pairs 200 --out o-l2.bin
+Backgammon.Trainer refine --version obiknovena --init o-l2.bin --positions 1000000 --rounds 8 --alpha 0.0003 --alpha-end 0.00003 --eval-pairs 100 --out o-l2-r.bin
+```
+
 ## Lessons
 
 - **α = 0.02 per state saturated the sigmoids.** With about 2,000 states summed per update, the network soon played

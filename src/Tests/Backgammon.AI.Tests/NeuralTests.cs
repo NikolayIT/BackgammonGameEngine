@@ -74,6 +74,89 @@ namespace Backgammon.AI.Tests
             Assert.Throws<InvalidDataException>(() => NeuralNetwork.Read(new MemoryStream(bytes)));
         }
 
+        [Theory]
+        [InlineData(1, 11)]
+        [InlineData(2, 12)]
+        [InlineData(3, 14)]
+        [InlineData(4, 15)]
+        [InlineData(5, 15)]
+        [InlineData(6, 17)]
+        [InlineData(7, 6)]
+        [InlineData(8, 6)]
+        [InlineData(9, 5)]
+        [InlineData(10, 3)]
+        [InlineData(11, 2)]
+        [InlineData(12, 3)]
+        public void OneCheckerShouldHitABlotWithTheStandardNumberOfRolls(int distance, int rolls)
+        {
+            // Seat 0's checker on its 20 and seat 1's lone checker `distance` pips ahead, with nothing in between: the
+            // two blots face each other, so each hits the other with the same rolls.
+            var position = Board(BackgammonVersion.Obiknovena, (0, 20, 1), (1, Geometry.Other(BackgammonVersion.Obiknovena, 20 - distance), 1));
+
+            Assert.Equal(rolls, FeatureEncoder.HittingRolls(position, 0));
+            Assert.Equal(rolls, FeatureEncoder.HittingRolls(position, 1));
+        }
+
+        [Fact]
+        public void HittingRollsShouldRespectBlockedPointsAndTheBar()
+        {
+            // 8 pips away with seat 1's point 4 pips ahead: 4-4 and 2-2 are blocked, 6-2 and 5-3 are not.
+            var blocked = Board(BackgammonVersion.Obiknovena, (0, 20, 1), (1, Geometry.Other(BackgammonVersion.Obiknovena, 12), 1), (1, Geometry.Other(BackgammonVersion.Obiknovena, 16), 2));
+            Assert.Equal(4, FeatureEncoder.HittingRolls(blocked, 0));
+
+            // From the bar, a blot on the entry point 20 is hit by any 5, 4-1 or 3-2.
+            var bar = Board(BackgammonVersion.Obiknovena, (0, Geometry.Bar, 1), (1, Geometry.Other(BackgammonVersion.Obiknovena, 20), 1));
+            Assert.Equal(15, FeatureEncoder.HittingRolls(bar, 0));
+
+            // No hitting in гюлбара, and a тапа pin counts like a hit.
+            Assert.Equal(0, FeatureEncoder.HittingRolls(Board(BackgammonVersion.Gyulbara, (0, 20, 1), (1, Geometry.Other(BackgammonVersion.Gyulbara, 14), 1)), 0));
+            Assert.Equal(17, FeatureEncoder.HittingRolls(Board(BackgammonVersion.Tapa, (0, 20, 1), (1, Geometry.Other(BackgammonVersion.Tapa, 14), 1)), 0));
+        }
+
+        [Theory]
+        [InlineData(BackgammonVariant.Obiknovena)]
+        [InlineData(BackgammonVariant.Tapa)]
+        [InlineData(BackgammonVariant.Chelebi)]
+        public void HittingRollsShouldCountExactlyAsTheNetworksWereTrained(BackgammonVariant variant)
+        {
+            // Positions from random matches, the bar and pins included, for both seats.
+            var positions = 0;
+            for (var seed = 0; positions < 5_000; seed++)
+            {
+                var dice = new Random(seed);
+                var match = new BackgammonMatch(new BackgammonMatchOptions { Variant = variant, Dice = (n, _) => dice.Next(n), RecordHistory = false });
+                var random = new Random(seed);
+                match.Start();
+                while (!match.IsFinished)
+                {
+                    var view = match.GetView(0);
+                    var position = ViewConverter.ToPosition(view.Version, view.Board);
+                    Assert.Equal(HittingRollsReference.Of(position, 0), FeatureEncoder.HittingRolls(position, 0));
+                    Assert.Equal(HittingRollsReference.Of(position, 1), FeatureEncoder.HittingRolls(position, 1));
+                    positions++;
+                    var moves = match.GetStageMoves();
+                    match.Act(match.ToMove, new BackgammonAction { Steps = moves.Outcomes[random.Next(moves.OutcomeCount)].Steps });
+                }
+            }
+        }
+
+        [Fact]
+        public void TheLatestLayoutShouldAddItsInputsAfterTheFirstLayouts()
+        {
+            var position = Position.Start(BackgammonVersion.Obiknovena);
+            Span<int> indices1 = stackalloc int[FeatureEncoder.MaxActive];
+            Span<float> values1 = stackalloc float[FeatureEncoder.MaxActive];
+            Span<int> indices2 = stackalloc int[FeatureEncoder.MaxActive];
+            Span<float> values2 = stackalloc float[FeatureEncoder.MaxActive];
+
+            var count1 = FeatureEncoder.Encode(1, position, 0, new RollCounts(1, 0), indices1, values1);
+            var count2 = FeatureEncoder.Encode(2, position, 0, new RollCounts(1, 0), indices2, values2);
+
+            Assert.True(indices2[..count1].SequenceEqual(indices1[..count1]) && values2[..count1].SequenceEqual(values1[..count1]));
+            Assert.All(indices2[count1..count2].ToArray(), index => Assert.InRange(index, FeatureEncoder.Inputs, FeatureEncoder.InputsOf(2) - 1));
+            Assert.Equal(FeatureEncoder.LongestBlock(position, 0), FeatureEncoder.LongestBlock(position, 1));
+        }
+
         [Fact]
         public void AWarmStartCopyShouldCarryTheVersionItIsTrainedFor()
         {
@@ -143,6 +226,22 @@ namespace Backgammon.AI.Tests
                 Assert.Equal(shipped, Networks.For(version) != null);
                 Assert.Equal(shipped, BotLevels.EvaluatorFor(version) is NeuralEvaluator);
             }
+        }
+
+        // A position with the given checkers (seat, own point, count); every other checker is borne off.
+        private static Position Board(BackgammonVersion version, params (int Seat, int Point, int Count)[] checkers)
+        {
+            var position = new Position { Version = version };
+            var off = new[] { 15, 15 };
+            foreach (var (seat, point, count) in checkers)
+            {
+                position.Add(seat, point, count);
+                off[seat] -= count;
+            }
+
+            position.Set(0, Geometry.Off, off[0]);
+            position.Set(1, Geometry.Off, off[1]);
+            return position;
         }
     }
 }

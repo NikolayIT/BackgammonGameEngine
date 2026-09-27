@@ -26,7 +26,7 @@ namespace Backgammon.AI.Neural
                 scratch.Hidden = new float[this.Network.Hidden];
             }
 
-            var count = FeatureEncoder.Encode(position, onRoll, rollsMade, scratch.Indices, scratch.Values);
+            var count = FeatureEncoder.Encode(this.Network.Layout, position, onRoll, rollsMade, scratch.Indices, scratch.Values);
             Span<float> outputs = stackalloc float[NeuralNetwork.Outputs];
             this.Network.Evaluate(scratch.Indices.AsSpan(0, count), scratch.Values.AsSpan(0, count), scratch.Hidden, outputs);
             return Outcome.FromNetwork(outputs[0], outputs[1], outputs[2]);

@@ -21,6 +21,9 @@ namespace Backgammon.Trainer
 
         public int Hidden { get; set; } = 128;
 
+        /// <summary>Gets or sets the input layout of a network trained from scratch (see FeatureEncoder).</summary>
+        public int Layout { get; set; } = 1;
+
         /// <summary>Gets or sets the step size per state at the start; it falls geometrically to <see cref="AlphaEnd"/>.</summary>
         public double Alpha { get; set; } = 0.001;
 
@@ -50,6 +53,15 @@ namespace Backgammon.Trainer
 
         /// <summary>Gets or sets the network to measure (validate and stats commands).</summary>
         public string? Weights { get; set; }
+
+        /// <summary>Gets or sets how many positions each round of refinement trains on.</summary>
+        public long Positions { get; set; } = 1_000_000;
+
+        /// <summary>Gets or sets how many rounds of refinement to run, each with new positions and targets.</summary>
+        public int Rounds { get; set; } = 3;
+
+        /// <summary>Gets or sets how many times each round of refinement goes through its positions.</summary>
+        public int Epochs { get; set; } = 1;
 
         public static TrainingSettings Parse(string[] args, int start)
         {

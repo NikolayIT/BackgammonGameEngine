@@ -31,8 +31,14 @@ namespace Backgammon.AI.Neural
         private const int Magic = 0x4E4E4742; // "BGNN"
         private const int FormatVersion = 1;
 
-        public NeuralNetwork(BackgammonVersion version, int inputs, int hidden, string description)
+        public NeuralNetwork(BackgammonVersion version, int inputs, int hidden, string description, int layout = FeatureEncoder.Layout)
         {
+            if (inputs != FeatureEncoder.InputsOf(layout))
+            {
+                throw new ArgumentOutOfRangeException(nameof(inputs), inputs, $"Input layout {layout} has {FeatureEncoder.InputsOf(layout)} inputs.");
+            }
+
+            this.Layout = layout;
             if (hidden % Vector256<float>.Count != 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(hidden), hidden, "The hidden layer must be a multiple of 8.");
@@ -49,6 +55,9 @@ namespace Backgammon.AI.Neural
         }
 
         public BackgammonVersion Version { get; }
+
+        /// <summary>Gets the input layout the network reads (see <see cref="FeatureEncoder"/>).</summary>
+        public int Layout { get; }
 
         public int Inputs { get; }
 
@@ -70,9 +79,9 @@ namespace Backgammon.AI.Neural
         public int ParameterCount => this.W1.Length + this.B1.Length + this.W2.Length + this.B2.Length;
 
         /// <summary>A network with small random weights (Xavier-uniform) and zero biases, for training from scratch.</summary>
-        public static NeuralNetwork CreateRandom(BackgammonVersion version, int inputs, int hidden, int seed)
+        public static NeuralNetwork CreateRandom(BackgammonVersion version, int inputs, int hidden, int seed, int layout = FeatureEncoder.Layout)
         {
-            var network = new NeuralNetwork(version, inputs, hidden, $"random seed {seed}");
+            var network = new NeuralNetwork(version, inputs, hidden, $"random seed {seed}", layout);
             var random = new Random(seed);
             var limit1 = MathF.Sqrt(6f / (inputs + hidden)) * 0.5f;
             for (var i = 0; i < network.W1.Length; i++)
@@ -98,15 +107,15 @@ namespace Backgammon.AI.Neural
             }
 
             var layout = reader.ReadInt32();
-            if (layout != FeatureEncoder.Layout)
+            if (layout < 1 || layout > FeatureEncoder.LatestLayout)
             {
-                throw new InvalidDataException($"The network was trained on input layout {layout}, not {FeatureEncoder.Layout}.");
+                throw new InvalidDataException($"The network was trained on input layout {layout}, which this encoder does not have.");
             }
 
             var version = (BackgammonVersion)reader.ReadInt32();
             var inputs = reader.ReadInt32();
             var hidden = reader.ReadInt32();
-            if (reader.ReadInt32() != Outputs || inputs != FeatureEncoder.Inputs)
+            if (reader.ReadInt32() != Outputs || inputs != FeatureEncoder.InputsOf(layout))
             {
                 throw new InvalidDataException("The network does not fit the encoder.");
             }
@@ -119,7 +128,7 @@ namespace Backgammon.AI.Neural
             }
 
             var description = reader.ReadString();
-            var network = new NeuralNetwork(version, inputs, hidden, description);
+            var network = new NeuralNetwork(version, inputs, hidden, description, layout);
             ReadFloats(reader, network.W1);
             ReadFloats(reader, network.B1);
             ReadFloats(reader, network.W2);
@@ -132,7 +141,7 @@ namespace Backgammon.AI.Neural
             using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
             writer.Write(Magic);
             writer.Write(FormatVersion);
-            writer.Write(FeatureEncoder.Layout);
+            writer.Write(this.Layout);
             writer.Write((int)this.Version);
             writer.Write(this.Inputs);
             writer.Write(this.Hidden);
@@ -149,7 +158,7 @@ namespace Backgammon.AI.Neural
         /// <summary>A copy for another version, such as a network warm-started from another version's weights.</summary>
         public NeuralNetwork Copy(string description, BackgammonVersion version)
         {
-            var copy = new NeuralNetwork(version, this.Inputs, this.Hidden, description);
+            var copy = new NeuralNetwork(version, this.Inputs, this.Hidden, description, this.Layout);
             this.W1.CopyTo(copy.W1, 0);
             this.B1.CopyTo(copy.B1, 0);
             this.W2.CopyTo(copy.W2, 0);

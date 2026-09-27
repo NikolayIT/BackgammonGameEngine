@@ -23,6 +23,13 @@ namespace Backgammon.AI.Neural
     /// <item><term>250..253</term><description>Тапа mothers: mine alone on my start, theirs alone, my start empty, theirs empty.</description></item>
     /// <item><term>254..255</term><description>Тапа: a pinned checker keeps me, or them, from bearing off.</description></item>
     /// </list>
+    /// Layout 2 adds four inputs:
+    /// <list type="table">
+    /// <item><term>256..257</term><description>The share of my 36 rolls that hit (or, in тапа, pin) one of their lone
+    /// checkers, and the share of theirs that would hit one of mine.</description></item>
+    /// <item><term>258..259</term><description>The longest run of points the other side cannot land on, mine and
+    /// theirs, / 6.</description></item>
+    /// </list>
     /// </summary>
     internal static class FeatureEncoder
     {
@@ -31,8 +38,123 @@ namespace Backgammon.AI.Neural
         /// <summary>The layout's version, stored with the weights so a network is never read with another layout.</summary>
         public const int Layout = 1;
 
+        /// <summary>The newest layout.</summary>
+        public const int LatestLayout = 2;
+
         /// <summary>The most inputs that can be non-zero at once.</summary>
-        public const int MaxActive = 256;
+        public const int MaxActive = 264;
+
+        /// <summary>The number of inputs of a layout.</summary>
+        public static int InputsOf(int layout) => layout switch
+        {
+            1 => Inputs,
+            2 => Inputs + 4,
+            _ => throw new ArgumentOutOfRangeException(nameof(layout), layout, "Unknown input layout."),
+        };
+
+        public static int Encode(int layout, in Position position, int onRoll, RollCounts rolls, Span<int> indices, Span<float> values)
+        {
+            var count = Encode(position, onRoll, rolls, indices, values);
+            if (layout >= 2)
+            {
+                count = Add(256, HittingRolls(position, onRoll) / 36f, indices, values, count);
+                count = Add(257, HittingRolls(position, 1 - onRoll) / 36f, indices, values, count);
+                count = Add(258, Math.Min(6, LongestBlock(position, onRoll)) / 6f, indices, values, count);
+                count = Add(259, Math.Min(6, LongestBlock(position, 1 - onRoll)) / 6f, indices, values, count);
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// How many of <paramref name="shooter"/>'s 36 rolls let one of its checkers land on a lone checker of the
+        /// other side: a hit, or in тапа a pin. Each checker is taken alone, moving by one die, the sum of both dice
+        /// or up to four of a double, over open points; checkers on the bar must enter first. Always 0 in гюлбара.
+        /// </summary>
+        public static int HittingRolls(in Position position, int shooter)
+        {
+            var version = position.Version;
+            if (version == BackgammonVersion.Gyulbara)
+            {
+                return 0;
+            }
+
+            var target = 1 - shooter;
+            var tapa = version == BackgammonVersion.Tapa;
+            Span<bool> blot = stackalloc bool[26];
+            Span<bool> open = stackalloc bool[26];
+            var lowest = 0;
+            for (var point = 1; point <= 24; point++)
+            {
+                var other = Geometry.Other(version, point);
+                var theirs = position.Count(target, other);
+                open[point] = theirs <= 1 && !(tapa && position.IsPinned(shooter, point));
+                blot[point] = open[point] && theirs == 1 && !(tapa && position.IsPinned(target, other));
+                if (lowest == 0 && blot[point])
+                {
+                    lowest = point;
+                }
+            }
+
+            if (lowest == 0)
+            {
+                return 0;
+            }
+
+            // Checkers move down, so only those above the lowest lone checker can reach one.
+            Span<int> movable = stackalloc int[Geometry.Checkers];
+            var count = 0;
+            for (var from = 24; from > lowest; from--)
+            {
+                if (position.Count(shooter, from) > 0 && !position.IsPinned(shooter, from))
+                {
+                    movable[count++] = from;
+                }
+            }
+
+            var bar = position.Count(shooter, Geometry.Bar);
+            if (count == 0 && bar == 0)
+            {
+                return 0;
+            }
+
+            var rolls = 0;
+            for (var first = 1; first <= 6; first++)
+            {
+                for (var second = first; second <= 6; second++)
+                {
+                    if (Hits(movable[..count], bar, blot, open, first, second))
+                    {
+                        rolls += first == second ? 1 : 2;
+                    }
+                }
+            }
+
+            return rolls;
+        }
+
+        /// <summary>The longest run of <paramref name="side"/>'s points (in its numbering) the other side cannot land on.</summary>
+        public static int LongestBlock(in Position position, int side)
+        {
+            var version = position.Version;
+            var other = 1 - side;
+            int longest = 0, run = 0;
+            for (var point = 1; point <= 24; point++)
+            {
+                var mine = position.Count(side, point);
+                var blocks = version switch
+                {
+                    BackgammonVersion.Gyulbara => mine >= 1,
+                    BackgammonVersion.Tapa => mine >= 2 || (mine >= 1 && position.IsPinned(other, Geometry.Other(version, point))),
+                    _ => mine >= 2,
+                };
+
+                run = blocks ? run + 1 : 0;
+                longest = Math.Max(longest, run);
+            }
+
+            return longest;
+        }
 
         public static int Encode(in Position position, int onRoll, RollCounts rolls, Span<int> indices, Span<float> values)
         {
@@ -126,6 +248,121 @@ namespace Backgammon.AI.Neural
 
             return own > theirs;
         }
+
+        private static bool Hits(ReadOnlySpan<int> movable, int bar, ReadOnlySpan<bool> blot, ReadOnlySpan<bool> open, int first, int second)
+        {
+            if (first == second)
+            {
+                var steps = 4;
+                if (bar > 0)
+                {
+                    // Every checker on the bar enters first; the rest of the double is free.
+                    var entry = Geometry.Bar - first;
+                    if (!open[entry])
+                    {
+                        return false;
+                    }
+
+                    if (blot[entry])
+                    {
+                        return true;
+                    }
+
+                    steps -= bar;
+                    if (steps <= 0)
+                    {
+                        return false;
+                    }
+
+                    if (Reaches(entry, first, steps, blot, open))
+                    {
+                        return true;
+                    }
+                }
+
+                foreach (var from in movable)
+                {
+                    if (Reaches(from, first, steps, blot, open))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            if (bar >= 2)
+            {
+                return blot[Geometry.Bar - first] || blot[Geometry.Bar - second];
+            }
+
+            if (bar == 1)
+            {
+                return EntersThenHits(movable, blot, open, first, second) || EntersThenHits(movable, blot, open, second, first);
+            }
+
+            foreach (var from in movable)
+            {
+                if (Lands(blot, from - first) || Lands(blot, from - second))
+                {
+                    return true;
+                }
+
+                var both = from - first - second;
+                if (Lands(blot, both) && (open[from - first] || open[from - second]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool EntersThenHits(ReadOnlySpan<int> movable, ReadOnlySpan<bool> blot, ReadOnlySpan<bool> open, int enter, int then)
+        {
+            var entry = Geometry.Bar - enter;
+            if (!open[entry])
+            {
+                return false;
+            }
+
+            if (blot[entry] || Lands(blot, entry - then))
+            {
+                return true;
+            }
+
+            foreach (var from in movable)
+            {
+                if (Lands(blot, from - then))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Up to `steps` moves of `die` from `from` over open points, stopping on the first lone checker.
+        private static bool Reaches(int from, int die, int steps, ReadOnlySpan<bool> blot, ReadOnlySpan<bool> open)
+        {
+            for (var step = 1; step <= steps; step++)
+            {
+                var to = from - (step * die);
+                if (to < 1 || !open[to])
+                {
+                    return false;
+                }
+
+                if (blot[to])
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool Lands(ReadOnlySpan<bool> blot, int to) => to >= 1 && blot[to];
 
         private static int Unary(int checkers, int offset, Span<int> indices, Span<float> values, int count)
         {

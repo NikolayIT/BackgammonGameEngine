@@ -64,7 +64,7 @@ namespace Backgammon.Trainer
             for (var t = 0; t < count; t++)
             {
                 var state = states[t];
-                var active = FeatureEncoder.Encode(state.Position, state.Roller, state.Rolls, this.indices, this.values);
+                var active = FeatureEncoder.Encode(this.network.Layout, state.Position, state.Roller, state.Rolls, this.indices, this.values);
                 this.network.Evaluate(this.indices.AsSpan(0, active), this.values.AsSpan(0, active), this.hidden.AsSpan(t * width, width), this.outputs.AsSpan(t * outs, outs));
                 this.rollers[t] = state.Roller;
             }
@@ -118,7 +118,7 @@ namespace Backgammon.Trainer
             for (var t = 0; t < count; t++)
             {
                 var state = states[t];
-                var active = FeatureEncoder.Encode(state.Position, state.Roller, state.Rolls, this.indices, this.values);
+                var active = FeatureEncoder.Encode(this.network.Layout, state.Position, state.Roller, state.Rolls, this.indices, this.values);
                 var h = this.hidden.AsSpan(t * width, width);
                 Array.Clear(this.hiddenDelta);
                 for (var k = 0; k < outs; k++)
