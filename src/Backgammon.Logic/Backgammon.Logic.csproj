@@ -10,6 +10,19 @@
     <PackageTags>backgammon;tabla;табла;tavla;tavli;plakoto;gul bara;narde;board game;game engine</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/NikolayIT/BackgammonGameEngine</PackageProjectUrl>
+    <PackageIcon>Logo_300x300.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>
+1.0.0 (the first release)
+
+- BackgammonMatch: табла matches driven one action at a time (Start, ToMove, Validate, Act, Stop) for обикновена,
+  гюлбара, тапа, челеби and the среща rotation, played to 3 (5 for a среща) with the lead rule.
+- Every die from an injected source, in a documented order, and a record that accounts for every draw.
+- Escalating doubles from each player's 4th roll, with remainders passed to the opponent; тапа pins, the майка and
+  the double-mother draw; марс; the stuck rule.
+- Per-seat views and match records as plain JSON-serializable models; exact replay from a record.
+- BackgammonStageMoves: outcomes, legal next steps, destinations and dice left for tap-to-move boards.
+    </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/NikolayIT/BackgammonGameEngine</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -26,6 +39,11 @@
     <InternalsVisibleTo Include="Backgammon.AI.Tests" />
     <InternalsVisibleTo Include="Backgammon.Arena" />
     <InternalsVisibleTo Include="Backgammon.Trainer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\assets\Logo_300x300.png" Pack="true" PackagePath="" />
+    <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

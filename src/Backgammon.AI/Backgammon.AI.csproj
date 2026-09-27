@@ -10,6 +10,16 @@
     <PackageTags>backgammon;tabla;табла;bot;neural network;td-gammon;game ai</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/NikolayIT/BackgammonGameEngine</PackageProjectUrl>
+    <PackageIcon>Logo_300x300.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>
+1.0.0 (the first release)
+
+- BackgammonBot: six levels for every version, deciding from a seat view alone, deterministic for a view, level and
+  Random, and fast. Level 6 is a TD-Gammon-style network per version (or the hand-written evaluator where the network
+  did not beat it), aware of the match score; levels 1..5 add calibrated noise.
+- A complexity estimate per decision, for pacing a bot's think time.
+    </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/NikolayIT/BackgammonGameEngine</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -32,6 +42,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Backgammon.Logic\Backgammon.Logic.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\assets\Logo_300x300.png" Pack="true" PackagePath="" />
+    <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

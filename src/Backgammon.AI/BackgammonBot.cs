@@ -21,6 +21,12 @@ namespace Backgammon.AI
         /// <summary>The number of levels, 1 (weakest) to 6 (strongest).</summary>
         public const int Levels = 6;
 
+        // The bots use the engine's internals, so the two packages must be the same version.
+        private static readonly string? VersionMismatch =
+            typeof(BackgammonMatch).Assembly.GetName().Version == typeof(BackgammonBot).Assembly.GetName().Version
+                ? null
+                : $"BackgammonGameEngine.Bots {typeof(BackgammonBot).Assembly.GetName().Version} needs the same version of BackgammonGameEngine, not {typeof(BackgammonMatch).Assembly.GetName().Version}.";
+
         /// <summary>Chooses how the seat to move plays its stage.</summary>
         /// <param name="view">A view in which a seat is to move, typically that seat's own view.</param>
         /// <param name="level">The level, 1..6.</param>
@@ -36,6 +42,11 @@ namespace Backgammon.AI
         public static BackgammonBotDecision Decide(BackgammonSeatView view, int level, Random random)
         {
             ArgumentNullException.ThrowIfNull(random);
+            if (VersionMismatch != null)
+            {
+                throw new InvalidOperationException(VersionMismatch);
+            }
+
             if (level < 1 || level > Levels)
             {
                 throw new ArgumentOutOfRangeException(nameof(level), level, $"A level is 1..{Levels}.");

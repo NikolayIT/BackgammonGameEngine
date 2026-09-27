@@ -1,0 +1,99 @@
+name: Publish
+
+# Publishes the engine (BackgammonGameEngine) and the bots (BackgammonGameEngine.Bots) to nuget.org. Publishing is
+# irreversible: a version that has been pushed can never be replaced, only unlisted. So this runs only for a published
+# GitHub release whose tag is the packages' version (for example 1.0.0, matching <Version> in both csproj files), or a
+# deliberate manual dispatch for such a tag, and it refuses to push packages whose tests do not pass. nuget.org Trusted
+# Publishing exchanges the workflow's OIDC token for a short-lived API key, so no NuGet API key is stored in the
+# repository.
+#
+# One-time setup (the owner):
+#   1. On nuget.org, add a Trusted Publishing policy for the repository NikolayIT/BackgammonGameEngine, the workflow
+#      file publish.yml and the environment "release", covering both package ids.
+#   2. In the repository settings, create the environment "release" (optionally with required reviewers) and the
+#      secret NUGET_USER holding the nuget.org user name.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (the package version, for example 1.0.0)
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  publish:
+    name: Test, pack and publish to NuGet
+    runs-on: ubuntu-latest
+
+    # Somewhere to require a manual approval before the push. The nuget.org Trusted Publishing policy is restricted to
+    # this environment, so keep them in sync.
+    environment: release
+
+    permissions:
+      # Required for Trusted Publishing: without it GitHub will not issue the OIDC token.
+      id-token: write
+      # Attaches the packages to the GitHub release.
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check that the package versions match the tag
+        shell: pwsh
+        run: |
+          foreach ($project in 'src/Backgammon.Logic/Backgammon.Logic.csproj', 'src/Backgammon.AI/Backgammon.AI.csproj') {
+            $version = (Select-Xml -Path $project -XPath '//Version').Node.InnerText
+            if ($version -ne $env:TAG) {
+              throw "$project has version $version but the release tag is $env:TAG."
+            }
+          }
+
+      # ContinuousIntegrationBuild makes the packages deterministic, with source paths Source Link can map back to this
+      # commit.
+      - name: Build
+        run: dotnet build src/Backgammon.slnx -c Release -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        working-directory: src
+        run: dotnet test --solution Backgammon.slnx -c Release --no-build
+
+      - name: Pack
+        run: |
+          dotnet pack src/Backgammon.Logic/Backgammon.Logic.csproj -c Release --no-build -p:ContinuousIntegrationBuild=true -o artifacts
+          dotnet pack src/Backgammon.AI/Backgammon.AI.csproj -c Release --no-build -p:ContinuousIntegrationBuild=true -o artifacts
+
+      # The temporary key nuget.org issues is valid for one hour, so it is requested immediately before the push.
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # The engine goes first: the bots package depends on it. The .snupkg files go along to the symbol server.
+      - name: Push to nuget.org
+        run: |
+          dotnet nuget push artifacts/BackgammonGameEngine.${{ env.TAG }}.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push artifacts/BackgammonGameEngine.Bots.${{ env.TAG }}.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Attach the packages to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ env.TAG }} artifacts/*.nupkg artifacts/*.snupkg --clobber
