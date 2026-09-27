@@ -213,6 +213,9 @@ namespace Backgammon.Arena
                 var baseline = Backgammon.AI.Evaluation.BaselineEvaluator.Instance;
                 var network = Backgammon.AI.Neural.NeuralNetwork.CreateRandom(version, Backgammon.AI.Neural.FeatureEncoder.Inputs, 128, 1);
                 var neural = new Backgammon.AI.Neural.NeuralEvaluator(network);
+                var latest = Backgammon.AI.Neural.FeatureEncoder.LatestLayout;
+                var network2 = Backgammon.AI.Neural.NeuralNetwork.CreateRandom(version, Backgammon.AI.Neural.FeatureEncoder.InputsOf(latest), 128, 1, latest);
+                var neural2 = new Backgammon.AI.Neural.NeuralEvaluator(network2);
                 var rolls = new Backgammon.AI.Evaluation.RollCounts(5, 5);
                 double Time(Backgammon.AI.Evaluation.IEvaluator evaluator)
                 {
@@ -229,11 +232,29 @@ namespace Backgammon.Arena
                     return sum >= 0 ? watch.Elapsed.TotalMicroseconds / (20.0 * samples.Count) : 0;
                 }
 
+                double Features()
+                {
+                    var watch = Stopwatch.StartNew();
+                    var sum = 0;
+                    for (var round = 0; round < 20; round++)
+                    {
+                        foreach (var (position, seat) in samples)
+                        {
+                            sum += Backgammon.AI.Neural.FeatureEncoder.HittingRolls(position, seat) + Backgammon.AI.Neural.FeatureEncoder.HittingRolls(position, 1 - seat);
+                            sum += Backgammon.AI.Neural.FeatureEncoder.LongestBlock(position, seat) + Backgammon.AI.Neural.FeatureEncoder.LongestBlock(position, 1 - seat);
+                        }
+                    }
+
+                    return sum >= 0 ? watch.Elapsed.TotalMicroseconds / (20.0 * samples.Count) : 0;
+                }
+
                 Time(baseline);
                 Time(neural);
+                Time(neural2);
+                Features();
                 Console.WriteLine(
                     $"{version,-10} generation {generation:F1} us a stage (doubles {doubles / (stages * 6.0 / 21):F1} us), {(double)total / stages:F1} ends; " +
-                    $"evaluation: baseline {Time(baseline):F2} us, network {Time(neural):F2} us");
+                    $"evaluation: baseline {Time(baseline):F2} us, network {Time(neural):F2} us, layout {latest} {Time(neural2):F2} us (its extra inputs {Features():F2} us)");
             }
         }
     }

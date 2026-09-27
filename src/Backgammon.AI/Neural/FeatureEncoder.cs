@@ -79,41 +79,40 @@ namespace Backgammon.AI.Neural
                 return 0;
             }
 
+            // Bit p of each mask is point p in the shooter's numbering, so moving by a die is a shift right; points
+            // below 1 fall off, since bit 0 of the masks is never set.
+            // In тапа the shooter's own pinned checkers neither move nor let it land there (the pin masks are in each
+            // seat's numbering, like these), and a lone checker it already pins is not a new one.
             var target = 1 - shooter;
-            var tapa = version == BackgammonVersion.Tapa;
-            Span<bool> blot = stackalloc bool[26];
-            Span<bool> open = stackalloc bool[26];
-            var lowest = 0;
+            var shooterPinned = position.PinnedMask(shooter);
+            var targetPinned = position.PinnedMask(target);
+            uint blots = 0, open = 0, movable = 0;
             for (var point = 1; point <= 24; point++)
             {
                 var other = Geometry.Other(version, point);
                 var theirs = position.Count(target, other);
-                open[point] = theirs <= 1 && !(tapa && position.IsPinned(shooter, point));
-                blot[point] = open[point] && theirs == 1 && !(tapa && position.IsPinned(target, other));
-                if (lowest == 0 && blot[point])
+                var bit = 1u << point;
+                if (theirs <= 1)
                 {
-                    lowest = point;
+                    open |= bit;
+                    if (theirs == 1 && ((targetPinned >> other) & 1) == 0)
+                    {
+                        blots |= bit;
+                    }
+                }
+
+                if (position.Count(shooter, point) > 0)
+                {
+                    movable |= bit;
                 }
             }
 
-            if (lowest == 0)
-            {
-                return 0;
-            }
-
-            // Checkers move down, so only those above the lowest lone checker can reach one.
-            Span<int> movable = stackalloc int[Geometry.Checkers];
-            var count = 0;
-            for (var from = 24; from > lowest; from--)
-            {
-                if (position.Count(shooter, from) > 0 && !position.IsPinned(shooter, from))
-                {
-                    movable[count++] = from;
-                }
-            }
+            open &= ~shooterPinned;
+            blots &= open;
+            movable &= ~shooterPinned;
 
             var bar = position.Count(shooter, Geometry.Bar);
-            if (count == 0 && bar == 0)
+            if (blots == 0 || (movable == 0 && bar == 0))
             {
                 return 0;
             }
@@ -123,7 +122,7 @@ namespace Backgammon.AI.Neural
             {
                 for (var second = first; second <= 6; second++)
                 {
-                    if (Hits(movable[..count], bar, blot, open, first, second))
+                    if (Hits(movable, bar, blots, open, first, second))
                     {
                         rolls += first == second ? 1 : 2;
                     }
@@ -249,40 +248,35 @@ namespace Backgammon.AI.Neural
             return own > theirs;
         }
 
-        private static bool Hits(ReadOnlySpan<int> movable, int bar, ReadOnlySpan<bool> blot, ReadOnlySpan<bool> open, int first, int second)
+        private static bool Hits(uint movable, int bar, uint blots, uint open, int first, int second)
         {
             if (first == second)
             {
+                // Up to four steps of the die, over open points, each checker on its own.
                 var steps = 4;
+                var reach = movable;
                 if (bar > 0)
                 {
                     // Every checker on the bar enters first; the rest of the double is free.
-                    var entry = Geometry.Bar - first;
-                    if (!open[entry])
+                    var entry = 1u << (Geometry.Bar - first);
+                    if ((open & entry) == 0)
                     {
                         return false;
                     }
 
-                    if (blot[entry])
+                    if ((blots & entry) != 0)
                     {
                         return true;
                     }
 
                     steps -= bar;
-                    if (steps <= 0)
-                    {
-                        return false;
-                    }
-
-                    if (Reaches(entry, first, steps, blot, open))
-                    {
-                        return true;
-                    }
+                    reach |= entry;
                 }
 
-                foreach (var from in movable)
+                for (var step = 0; step < steps; step++)
                 {
-                    if (Reaches(from, first, steps, blot, open))
+                    reach = (reach >> first) & open;
+                    if ((reach & blots) != 0)
                     {
                         return true;
                     }
@@ -293,76 +287,31 @@ namespace Backgammon.AI.Neural
 
             if (bar >= 2)
             {
-                return blot[Geometry.Bar - first] || blot[Geometry.Bar - second];
+                return ((blots >> (Geometry.Bar - first)) & 1) != 0 || ((blots >> (Geometry.Bar - second)) & 1) != 0;
             }
 
             if (bar == 1)
             {
-                return EntersThenHits(movable, blot, open, first, second) || EntersThenHits(movable, blot, open, second, first);
+                return EntersThenHits(movable, blots, open, first, second) || EntersThenHits(movable, blots, open, second, first);
             }
 
-            foreach (var from in movable)
-            {
-                if (Lands(blot, from - first) || Lands(blot, from - second))
-                {
-                    return true;
-                }
-
-                var both = from - first - second;
-                if (Lands(blot, both) && (open[from - first] || open[from - second]))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            // One die, or both through either open point in between.
+            return ((movable >> first) & blots) != 0
+                || ((movable >> second) & blots) != 0
+                || ((((movable >> first) & open) >> second) & blots) != 0
+                || ((((movable >> second) & open) >> first) & blots) != 0;
         }
 
-        private static bool EntersThenHits(ReadOnlySpan<int> movable, ReadOnlySpan<bool> blot, ReadOnlySpan<bool> open, int enter, int then)
+        private static bool EntersThenHits(uint movable, uint blots, uint open, int enter, int then)
         {
-            var entry = Geometry.Bar - enter;
-            if (!open[entry])
+            var entry = 1u << (Geometry.Bar - enter);
+            if ((open & entry) == 0)
             {
                 return false;
             }
 
-            if (blot[entry] || Lands(blot, entry - then))
-            {
-                return true;
-            }
-
-            foreach (var from in movable)
-            {
-                if (Lands(blot, from - then))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return (blots & entry) != 0 || (((movable | entry) >> then) & blots) != 0;
         }
-
-        // Up to `steps` moves of `die` from `from` over open points, stopping on the first lone checker.
-        private static bool Reaches(int from, int die, int steps, ReadOnlySpan<bool> blot, ReadOnlySpan<bool> open)
-        {
-            for (var step = 1; step <= steps; step++)
-            {
-                var to = from - (step * die);
-                if (to < 1 || !open[to])
-                {
-                    return false;
-                }
-
-                if (blot[to])
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool Lands(ReadOnlySpan<bool> blot, int to) => to >= 1 && blot[to];
 
         private static int Unary(int checkers, int offset, Span<int> indices, Span<float> values, int count)
         {
