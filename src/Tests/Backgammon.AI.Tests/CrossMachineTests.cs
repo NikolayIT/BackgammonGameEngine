@@ -19,8 +19,8 @@ namespace Backgammon.AI.Tests
         {
             { BackgammonVariant.Obiknovena, 6, 3, "a15762754ab4bdee28dc93948c0e33f9198250f74d091c9013fdac739901f797" },
             { BackgammonVariant.Gyulbara, 6, 2, "434c4114109ed97c0cc6b92bd086513786b07392d8b083d2b9118685258a0355" },
-            { BackgammonVariant.Tapa, 5, 6, "a41fac8db707a8dbd9b72feffcb8fd4a18b14504dba102bcffbe429d65a519a1" },
-            { BackgammonVariant.Chelebi, 6, 4, "ada354af42a4e773f75a60b1565d6b427c9584f8d2014aacd46dd8270becc012" },
+            { BackgammonVariant.Tapa, 5, 6, "0b4d9394be41b6bb19d540b0dfaeb2306218353adca69dd154fd519569ad91a3" },
+            { BackgammonVariant.Chelebi, 6, 4, "22aecfe8e1160989b7e93005058ac1019a7ee3fc2d68e5972d43dd24a8046195" },
             { BackgammonVariant.Sreshta, 6, 1, "6763a3e666e1fbb105bd9183b687d9fa989b3dc3773694249aeaa2c5f8c15870" },
         };
 

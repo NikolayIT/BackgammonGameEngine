@@ -17,7 +17,8 @@
 
 - BackgammonBot: six levels for every version, deciding from a seat view alone, deterministic for a view, level and
   Random, and fast. Level 6 is a TD-Gammon-style network per version (or the hand-written evaluator where the network
-  did not beat it), aware of the match score; levels 1..5 add calibrated noise.
+  did not beat it), aware of the match score; levels 1..5 add calibrated noise. The обикновена, тапа and челеби
+  networks read hitting and blocking inputs and are refined towards their own one-roll look-ahead.
 - A complexity estimate per decision, for pacing a bot's think time.
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/NikolayIT/BackgammonGameEngine</RepositoryUrl>
