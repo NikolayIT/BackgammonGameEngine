@@ -89,6 +89,7 @@ namespace Backgammon.AI.Tests
             var expected = new System.Collections.Generic.Dictionary<BackgammonVersion, string>
             {
                 [BackgammonVersion.Obiknovena] = "bb7b6adeb7719185bec7fb95328244960ab3a38d793a1a7b9dcf3c126a4c50f5",
+                [BackgammonVersion.Gyulbara] = "93f7bb52acb1d662eee60a81c3470fc7da1d986e47d8b82983a3d912a8033097",
                 [BackgammonVersion.Tapa] = "e63b0edf808e5c9cf36dc80d6bc034024ab9e1b358475d382b0359304b756a4a",
             };
 

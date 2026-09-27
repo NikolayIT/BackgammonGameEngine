@@ -50,9 +50,9 @@ namespace Backgammon.AI.Evaluation
         /// </summary>
         public static (double Double, double Draw) Rates(BackgammonVersion version) => version switch
         {
-            BackgammonVersion.Obiknovena => (0.24, 0),
-            BackgammonVersion.Gyulbara => (0.12, 0),
-            BackgammonVersion.Tapa => (0.30, 0.02),
+            BackgammonVersion.Obiknovena => (0.133, 0),
+            BackgammonVersion.Gyulbara => (0.32, 0),
+            BackgammonVersion.Tapa => (0.381, 0.0001),
             _ => (0.28, 0),
         };
 
