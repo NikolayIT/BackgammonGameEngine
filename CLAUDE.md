@@ -39,7 +39,8 @@ RULES.md.
   - `Evaluation/` holds `BaselineEvaluator`, `MatchEquity` and `Outcome`.
   - `Neural/` holds the network, the encoder, the portable sigmoid, and the embedded weights (`Neural/Weights/*.bin`,
     listed in `Networks.Shipped`).
-- **`tools/Backgammon.Arena`**: `vectors`, `arena`, `ladder`, `calibrate`, `timing`.
+- **`tools/Backgammon.Arena`**: `vectors`, `arena`, `ladder`, `calibrate`, `timing`, `bench`. Players: `L1`..`L6`,
+  `random`, `baseline`, `baseline0`, `net:<file>`, `net1:<file>`, `noise:<σ>`, `search:<look-ahead>:<one roll>:<budget>`.
 - **`tools/Backgammon.Trainer`**: `train`, `validate`, `stats`, `bench` (see NEURAL_NETWORK.md).
 - Neither tool is in the solution. Run them from a copy of `bin`, because a running tool locks it.
 
@@ -71,7 +72,19 @@ RULES.md.
 - **Step size:** TD(λ) with games batched on a frozen network needs a small step per state. With 20 games (about
   2,000 states) summed per update, α = 0.02 saturated the sigmoids: the net played one fixed policy and lost 97% to
   the baseline. α = 0.001 falling to 0.0001 learns well: 80% after 100k games, 90% after 400k.
-- **One roll deeper** at level 6's two best plays is worth about +100 Elo in обикновена, for p99 of about 13 ms.
+- **One roll deeper** at level 6's two best plays is worth about +100 Elo in обикновена. With the network it is
+  worth little in гюлбара (+15, not significant).
+- **The evaluation budget must be a hard cap.** When it was only checked between candidates, one candidate of the
+  one-roll look-ahead through escalating doubles took up to 37 ms in гюлбара. Now an over-budget candidate keeps its
+  0-ply value and the search stops. Level 6 uses 3,000 evaluations: p99 at most 8.9 ms, max 16.4 ms.
+- **Calibrating levels.** Noisy players measured against level 6 directly all lose every match, which gives clamped,
+  meaningless Elo. Rate a chain of neighbours instead (arena `calibrate`). A full round robin (arena `ladder`) then
+  stretches the top compared with the chain, so re-interpolate the noises from the ladder's own ratings and check
+  again.
+- **Training.** Networks plateau after about 1M games at 128 hidden units. Челеби warm-started from обикновена ended
+  where челеби from scratch did. Every network ships from scratch, 2M games each (NEURAL_NETWORK.md).
+- **Measurements.** The arena and trainer measure under contention when other jobs run; time decisions on an idle
+  machine.
 - **Determinism:** the network uses explicit Vector256 arithmetic in a fixed order and its own exp, so the bots
   choose the same play on every machine. A hardware horizontal sum could add the lanes in another order, so the
   lanes are summed one by one.
