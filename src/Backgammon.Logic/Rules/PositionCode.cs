@@ -99,7 +99,9 @@ namespace Backgammon.Logic.Rules
                 }
 
                 var pinned = token.EndsWith('*');
-                if (!int.TryParse(pinned ? token[..^1] : token, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var count) || count == 0)
+                if (!int.TryParse(pinned ? token[..^1] : token, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var count)
+                    || count == 0 || count < -Geometry.Checkers || count > Geometry.Checkers
+                    || (pinned && version != BackgammonVersion.Tapa))
                 {
                     throw fail;
                 }
@@ -127,11 +129,29 @@ namespace Backgammon.Logic.Rules
 
             for (var seat = 0; seat < 2; seat++)
             {
-                position.Set(seat, Geometry.Bar, int.Parse(bar[seat], NumberStyles.None, CultureInfo.InvariantCulture));
-                position.Set(seat, Geometry.Off, int.Parse(off[seat], NumberStyles.None, CultureInfo.InvariantCulture));
+                if (!TryCount(bar[seat], out var onBar) || !TryCount(off[seat], out var borneOff) || (onBar > 0 && !Geometry.HasBar(version)))
+                {
+                    throw fail;
+                }
+
+                position.Set(seat, Geometry.Bar, onBar);
+                position.Set(seat, Geometry.Off, borneOff);
+                var total = 0;
+                for (var point = Geometry.Off; point <= Geometry.Bar; point++)
+                {
+                    total += position.Count(seat, point);
+                }
+
+                if (total != Geometry.Checkers)
+                {
+                    throw fail;
+                }
             }
 
             return position;
         }
+
+        private static bool TryCount(string text, out int count) =>
+            int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out count) && count <= Geometry.Checkers;
     }
 }

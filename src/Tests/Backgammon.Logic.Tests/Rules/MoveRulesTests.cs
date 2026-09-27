@@ -1,5 +1,6 @@
 namespace Backgammon.Logic.Tests.Rules
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
 
@@ -188,6 +189,33 @@ namespace Backgammon.Logic.Tests.Rules
             Assert.Equal(position, PositionCode.Parse(code));
             Assert.Contains("2*", code);
             Assert.Contains("-1*", code);
+        }
+
+        [Theory]
+        [InlineData("O:-2,,,,,5,,3,,,,-5,5,,,,-3,,-5,,,,,258|0,0|0,0")] // 258 would wrap to 2 as a byte: the start
+        [InlineData("O:-2,,,,,5,,3,,,,-5,5,,,,-3,,-5,,,,,2|0,0|0,256")] // and so would an off count of 256
+        [InlineData("O:-2,,,,,5,,3,,,,-5,5,,,,-3,,-5,,,,,-2147483648|0,0|0,0")]
+        [InlineData("O:-2,,,,,5,,3,,,,-5,5,,,,-3,,-5,,,,,3|0,0|0,0")] // 16 checkers
+        [InlineData("O:-2,,,,,5,,3,,,,-5,5,,,,-3,,-5,,,,,1*|0,0|0,0")] // a pin outside тапа
+        [InlineData("T:-15,,,,,,,,,,,,,,,,,,,,,,,14|1,0|0,0")] // a bar in тапа
+        [InlineData("O:-2,,,,,5,,3,,,,-5,5,,,,-3,,-5,,,,,2|0,0|0,x")]
+        public void AnImpossiblePositionCodeShouldBeRefused(string code)
+        {
+            Assert.Throws<FormatException>(() => PositionCode.Parse(code));
+        }
+
+        [Fact]
+        public void ABoardWithAnImpossibleBarOrOffCountShouldBeRefused()
+        {
+            // Counts are stored in bytes, so 256 used to read as 0 and pass the 15-checker check.
+            var start = BackgammonGeometry.StartBoard(BackgammonVersion.Obiknovena);
+            var onBar = new BackgammonBoard { Points = start.Points, Bar = new[] { 256, 0 }, Off = start.Off };
+            var empty = Enumerable.Range(1, 24).Select(n => new BackgammonPoint { Number = n }).ToArray();
+            var allOff = new BackgammonBoard { Points = empty, Bar = new[] { 0, 0 }, Off = new[] { 271, 271 } };
+
+            Assert.Throws<ArgumentException>(() => ViewConverter.ToPosition(BackgammonVersion.Obiknovena, onBar));
+            Assert.Throws<ArgumentException>(() => ViewConverter.ToPosition(BackgammonVersion.Obiknovena, allOff));
+            Assert.Equal(Position.Start(BackgammonVersion.Obiknovena), ViewConverter.ToPosition(BackgammonVersion.Obiknovena, start));
         }
 
         internal static (int Max, List<StageEnd> Ends) Generate(in Position position, int seat, StageDice dice)

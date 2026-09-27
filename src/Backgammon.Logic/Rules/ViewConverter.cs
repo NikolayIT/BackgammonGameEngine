@@ -79,7 +79,9 @@ namespace Backgammon.Logic.Rules
 
             for (var seat = 0; seat < 2; seat++)
             {
-                if (board.Bar[seat] < 0 || board.Off[seat] < 0 || (board.Bar[seat] > 0 && !Geometry.HasBar(version)))
+                // Counts above 15 are refused here, before they are stored in a byte and could wrap to a valid one.
+                if (board.Bar[seat] is < 0 or > Geometry.Checkers || board.Off[seat] is < 0 or > Geometry.Checkers
+                    || (board.Bar[seat] > 0 && !Geometry.HasBar(version)))
                 {
                     throw new ArgumentException("A bar or off count is impossible.", nameof(board));
                 }
