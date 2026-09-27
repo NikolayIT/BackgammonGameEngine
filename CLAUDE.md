@@ -89,3 +89,11 @@ RULES.md.
 - **Determinism:** the network uses explicit Vector256 arithmetic in a fixed order and its own exp, so the bots
   choose the same play on every machine. A hardware horizontal sum could add the lanes in another order, so the
   lanes are summed one by one.
+- **Counts are bytes.** `Position` stores counts in bytes, so any reader of outside input (views, position codes,
+  network files) must refuse out-of-range values *before* storing them: 256 checkers on the bar used to read as 0
+  and pass the 15-checker check.
+- **Who rolls after a stage** is `Chooser.OnRollAfter`, shared by the bots and the trainer: the mover after a
+  remainder stage (it rolls once the remainder is played), the opponent otherwise. Both used to put the opponent on
+  roll in the middle of a remainder.
+- **Compare every checker with the naive generator,** not only the generator: `StageChecker` (Validate, Act, the
+  helpers) was long checked only against itself. `StageCheckerDifferentialTests` now covers it.
