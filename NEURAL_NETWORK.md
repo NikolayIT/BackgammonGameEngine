@@ -62,7 +62,8 @@ what they achieved.
 7. **Checkpoints.** Every 200k games the network plays 800 matches against the hand-written evaluator, both with
    level 6's search and in duplicate pairs (the same dice, seats swapped). The best checkpoint is kept.
 
-Челеби starts from the trained обикновена network, which knows everything but the escalation.
+Every network is trained from scratch. A челеби network warm-started from обикновена's plateaued at the same strength
+(51.0% ± 2.2% of 2,000 matches head to head), so челеби too ships its from-scratch network.
 
 ### Reproducing the weights
 
@@ -73,12 +74,52 @@ set DOTNET_EnableAVX512F=0
 Backgammon.Trainer train --version obiknovena --seed 1 --games 2000000 --eval-every 200000 --eval-pairs 400 --out obiknovena.bin
 Backgammon.Trainer train --version tapa       --seed 1 --games 2000000 --eval-every 200000 --eval-pairs 400 --out tapa.bin
 Backgammon.Trainer train --version gyulbara   --seed 1 --games 2000000 --eval-every 200000 --eval-pairs 400 --out gyulbara.bin
-Backgammon.Trainer train --version chelebi    --seed 1 --games 1000000 --eval-every 200000 --eval-pairs 400 --init obiknovena.bin --out chelebi.bin
+Backgammon.Trainer train --version chelebi    --seed 1 --games 2000000 --eval-every 400000 --eval-pairs 400 --out chelebi.bin
 ```
 
-The step sizes, λ, batch and hidden size are the defaults (TrainingSettings.cs). Each file records its command line
-in its description. Copy the final (or best) file to `src/Backgammon.AI/Neural/Weights/{version}.bin` and list the
-version in `Networks.Shipped`.
+The step sizes, λ, batch and hidden size are the defaults (TrainingSettings.cs). Each file records its settings in its
+description. The shipped files are the final networks of these runs. `NeuralTests` pins their SHA-256. To ship a
+network, copy it to `src/Backgammon.AI/Neural/Weights/{version}.bin`, list the version in `Networks.Shipped`, and
+update the hash in the test.
+
+## Results
+
+The ship gate is 2,000 matches to 3 (1,000 duplicate pairs) against the hand-written evaluator. Both sides use level
+6's search, and the gate requires the lower bound of the 95% interval to be above 55%. Every network passed by a wide
+margin.
+
+| Version | Games | Time (20 threads) | Against the baseline | 2-point share in self-play | Rolls a game | SHA-256 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Обикновена | 2,000,000 | 20.7 min | **94.15% ± 1.03%** | 13.3% (марс) | 47 | `bb7b6ade…4c50f5` |
+| Гюлбара | 2,000,000 | 42.7 min | **81.15% ± 1.71%** | 32.0% (марс) | 49 | `93f7bb52…033097` |
+| Тапа | 2,000,000 | 20.3 min | **90.20% ± 1.30%** | 38.1% (марс 35.0%, майка 3.0%), draws 0.01% | 92 | `e63b0edf…756a4a` |
+| Челеби | 2,000,000 | 6.3 min | **69.50% ± 2.02%** | 49.2% (марс) | 27 | `da6a0fb9…9347f0` |
+
+The 2-point shares feed the match equity table (`MatchEquity.Rates`).
+
+The learning curves, as the share of 800 matches won against the baseline, checked every 200k games (400k for
+челеби). This measurement used the trainer build of the time, which had no one-roll look-ahead:
+
+| Games | Обикновена | Гюлбара | Тапа | Челеби |
+| --- | --- | --- | --- | --- |
+| 200k | 87.5% | 30.1% | 77.5% | |
+| 400k | 90.2% | 43.2% | 84.1% | 67.4% |
+| 600k | 89.7% | 66.9% | 88.6% | |
+| 800k | 91.5% | 76.9% | 88.5% | 71.1% |
+| 1.0M | 94.1% | 77.9% | 87.7% | |
+| 1.2M | 93.9% | 78.9% | 90.5% | 68.6% |
+| 1.4M | 91.9% | 82.3% | 90.2% | |
+| 1.6M | 93.0% | 81.0% | 91.4% | 69.4% |
+| 1.8M | 92.4% | 80.0% | 90.5% | |
+| 2.0M | 93.0% | 79.2% | 92.9% | 69.3% |
+
+Observations:
+
+- **Обикновена plateaued after about 1M games.** Its final network and the 1M checkpoint are level (51.7% ± 3.1%
+  head to head). A larger hidden layer would be the next step, at twice the evaluation cost.
+- **Гюлбара learned slowly.** Blocking only pays off over many rolls. From 30% at 200k games it climbed to about 80%.
+- **Челеби is dominated by luck.** Escalating doubles move up to 84 pips in one roll, which caps how far any evaluator
+  can pull ahead. Its TD error stays three times higher than обикновена's.
 
 ## Lessons
 

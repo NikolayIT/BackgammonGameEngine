@@ -53,7 +53,7 @@ namespace Backgammon.AI.Evaluation
             BackgammonVersion.Obiknovena => (0.133, 0),
             BackgammonVersion.Gyulbara => (0.32, 0),
             BackgammonVersion.Tapa => (0.381, 0.0001),
-            _ => (0.28, 0),
+            _ => (0.492, 0),
         };
 
         /// <summary>The chance that the player on <paramref name="mine"/> points wins the match.</summary>
