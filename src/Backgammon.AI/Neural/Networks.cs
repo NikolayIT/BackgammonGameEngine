@@ -13,7 +13,7 @@ namespace Backgammon.AI.Neural
     internal static class Networks
     {
         /// <summary>The versions whose network passed the gate against the baseline.</summary>
-        public static readonly BackgammonVersion[] Shipped = { BackgammonVersion.Obiknovena };
+        public static readonly BackgammonVersion[] Shipped = { BackgammonVersion.Obiknovena, BackgammonVersion.Tapa };
 
         private static readonly Lazy<NeuralNetwork?>[] Loaded =
         {
