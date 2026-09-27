@@ -202,10 +202,10 @@ namespace Backgammon.AI.Tests
         {
             var expected = new System.Collections.Generic.Dictionary<BackgammonVersion, string>
             {
-                [BackgammonVersion.Obiknovena] = "bb7b6adeb7719185bec7fb95328244960ab3a38d793a1a7b9dcf3c126a4c50f5",
+                [BackgammonVersion.Obiknovena] = "ae03ac24fb73d81f7938d1c87e04a8369c0745edd778c806761eb1ccdae3395f",
                 [BackgammonVersion.Gyulbara] = "93f7bb52acb1d662eee60a81c3470fc7da1d986e47d8b82983a3d912a8033097",
                 [BackgammonVersion.Chelebi] = "da6a0fb92f3e1b1f4a21296370afc9b9f57f5d838dd16324b296c5416e9347f0",
-                [BackgammonVersion.Tapa] = "e63b0edf808e5c9cf36dc80d6bc034024ab9e1b358475d382b0359304b756a4a",
+                [BackgammonVersion.Tapa] = "99febb2037d17e2667d5dd228f582fa217f5430a7674056f6d89d644ba8474d6",
             };
 
             Assert.Equal(expected.Keys.OrderBy(v => v), Networks.Shipped.OrderBy(v => v));

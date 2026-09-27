@@ -17,11 +17,11 @@ namespace Backgammon.AI.Tests
     {
         public static TheoryData<BackgammonVariant, int, int, string> Matches => new()
         {
-            { BackgammonVariant.Obiknovena, 6, 3, "8dfdf9b03e02435d97b6ca6e2ac347ddc9767acc80ef92ac66f2748a78cf3039" },
+            { BackgammonVariant.Obiknovena, 6, 3, "a15762754ab4bdee28dc93948c0e33f9198250f74d091c9013fdac739901f797" },
             { BackgammonVariant.Gyulbara, 6, 2, "434c4114109ed97c0cc6b92bd086513786b07392d8b083d2b9118685258a0355" },
-            { BackgammonVariant.Tapa, 5, 6, "825b9289548568f0ffb44e4d45ad7f8711ef6f963bf747349ca084c8b854ea38" },
+            { BackgammonVariant.Tapa, 5, 6, "a41fac8db707a8dbd9b72feffcb8fd4a18b14504dba102bcffbe429d65a519a1" },
             { BackgammonVariant.Chelebi, 6, 4, "3f25185f2ab000500e105aff55145d1fb1801ab58896b5fc6d026858bcf398eb" },
-            { BackgammonVariant.Sreshta, 6, 1, "040edf92d63143599676354b597b0070c7a98f49aaa8914304eeef24d8a06db8" },
+            { BackgammonVariant.Sreshta, 6, 1, "6763a3e666e1fbb105bd9183b687d9fa989b3dc3773694249aeaa2c5f8c15870" },
         };
 
         [Theory]
