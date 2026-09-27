@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+    <!-- LibraryImport (PowerThrottling) generates unsafe marshalling code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The arena's match runner, to measure a network against the baseline while training. -->
+    <Compile Include="..\Backgammon.Arena\Arena\ArenaPlayer.cs" Link="Arena\ArenaPlayer.cs" />
+    <Compile Include="..\Backgammon.Arena\Arena\EvaluatorPlayer.cs" Link="Arena\EvaluatorPlayer.cs" />
+    <Compile Include="..\Backgammon.Arena\Arena\ArenaRunner.cs" Link="Arena\ArenaRunner.cs" />
+    <Compile Include="..\Backgammon.Arena\Arena\MatchStats.cs" Link="Arena\MatchStats.cs" />
+    <Compile Include="..\Backgammon.Arena\Arena\PairStats.cs" Link="Arena\PairStats.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Backgammon.AI\Backgammon.AI.csproj" />
+  </ItemGroup>
+
+</Project>

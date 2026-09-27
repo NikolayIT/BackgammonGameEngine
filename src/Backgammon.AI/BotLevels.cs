@@ -3,6 +3,7 @@ namespace Backgammon.AI
     using System;
 
     using Backgammon.AI.Evaluation;
+    using Backgammon.AI.Neural;
     using Backgammon.AI.Search;
     using Backgammon.Logic;
 
@@ -17,7 +18,16 @@ namespace Backgammon.AI
         // Noise per level 1..6, in match-winning chance.
         private static readonly double[] Noise = { 0.30, 0.16, 0.09, 0.05, 0.02, 0 };
 
-        public static IEvaluator EvaluatorFor(BackgammonVersion version) => BaselineEvaluator.Instance;
+        private static readonly Lazy<IEvaluator>[] Evaluators =
+        {
+            new(() => Create(BackgammonVersion.Obiknovena)),
+            new(() => Create(BackgammonVersion.Gyulbara)),
+            new(() => Create(BackgammonVersion.Tapa)),
+            new(() => Create(BackgammonVersion.Chelebi)),
+        };
+
+        /// <summary>The strongest evaluator of a version: its shipped network, or the hand-written baseline.</summary>
+        public static IEvaluator EvaluatorFor(BackgammonVersion version) => Evaluators[(int)version].Value;
 
         public static SearchSettings SettingsFor(int level)
         {
@@ -28,5 +38,8 @@ namespace Backgammon.AI
 
             return new SearchSettings(Noise[level - 1], LookAhead: level == BackgammonBot.Levels ? 3 : 0, EvaluationBudget: 4_000);
         }
+
+        private static IEvaluator Create(BackgammonVersion version) =>
+            Networks.For(version) is { } network ? new NeuralEvaluator(network) : BaselineEvaluator.Instance;
     }
 }

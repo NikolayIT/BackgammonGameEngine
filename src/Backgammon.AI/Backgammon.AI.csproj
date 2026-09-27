@@ -26,6 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The trained networks, one per version that passed the gate (see NEURAL_NETWORK.md). -->
+    <EmbeddedResource Include="Neural\Weights\*.bin" LogicalName="Backgammon.AI.Neural.Weights.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Backgammon.Logic\Backgammon.Logic.csproj" />
   </ItemGroup>
 
