@@ -20,8 +20,11 @@ RULES.md.
   - If the roller cannot play even one die of the rolled double, the chain is lost.
   - Otherwise the unplayed rest passes to the opponent, who plays it stage by stage before rolling. Dice the
     opponent cannot play are lost, and nothing passes back.
-- **Release:** the owner releases to NuGet. Never create a GitHub release. The one-time setup is written in
-  `.github/workflows/publish.yml`.
+- **Release:** 1.0.0 is on nuget.org (2026-09-28). Release only when the owner asks. nuget.org Trusted Publishing is
+  set up: publishing a GitHub release whose tag equals `<Version>` in both csproj files runs
+  `.github/workflows/publish.yml`, which tests, packs and pushes both packages with their symbols. Its policy
+  ("BackgammonGameEngine release" on nuget.org) allows only new versions of the two packages, from `publish.yml` in the
+  `release` environment. A pushed version can never be replaced, only unlisted.
 
 ## Layout
 
